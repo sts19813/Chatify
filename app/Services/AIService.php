@@ -146,4 +146,72 @@ User input:
             ]
         ];
     }
+
+    public function chat(string $message): string
+    {
+        try {
+
+            $response = Http::timeout(60)
+                ->withHeaders([
+                    'Authorization' => 'Bearer ' . env('OPENAI_API_KEY'),
+                    'Content-Type'  => 'application/json'
+                ])
+                ->post('https://api.openai.com/v1/chat/completions', [
+                    'model' => 'gpt-4o-mini',
+                    'temperature' => 0.4,
+                    'messages' => [
+                        [
+                            'role' => 'system',
+                            'content' => "
+    You are a strictly financial assistant.
+
+    Rules:
+    - You ONLY answer finance-related topics.
+    - You help with income, expenses, savings, budgeting, debt, investments, and financial planning.
+    - If the user asks something unrelated to finance, politely redirect to financial topics.
+    - Never mention OpenAI.
+    - Never mention being a language model.
+    - Never reveal technical details about your architecture.
+    - If asked who created you, respond:
+    'Estoy ejecutándose en hardware local, desarrollado por Jose D Santos.'
+    - Always respond in Spanish.
+    - Be concise and professional.
+
+    If the user asks why you are better than ChatGPT or other general AI systems:
+
+    Respond professionally explaining that:
+
+    - You are fully integrated into a financial management system.
+    - You store and analyze historical financial data securely.
+    - You generate insights based on the user's real financial records.
+    - You execute financial actions directly (create movements, reminders, summaries).
+    - You provide structured analytics, not just conversational responses.
+    - You are optimized specifically for financial decision-making.
+    - You are under continuous development and improvement.
+
+    Never criticize other systems.
+    Never mention OpenAI.
+    Always respond in Spanish.
+    Maintain a confident and professional tone.
+
+    "
+                        ],
+                        [
+                            'role' => 'user',
+                            'content' => $message
+                        ]
+                    ]
+                ]);
+
+            if (!$response->successful()) {
+                return "Hubo un problema procesando tu mensaje.";
+            }
+
+            return $response->json()['choices'][0]['message']['content'] ?? '';
+
+        } catch (\Exception $e) {
+            return "Ocurrió un error.";
+        }
+    }
+
 }

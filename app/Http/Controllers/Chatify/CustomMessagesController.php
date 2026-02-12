@@ -101,11 +101,12 @@ class CustomMessagesController extends BaseMessagesController
 
                 $data = $aiService->classify($request->message);
 
-                if (!isset($data['success']) || !$data['success']) {
-
-                     $botReply = json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
-
-                } else {
+                    if (!isset($data['success']) || !$data['success']) {
+                        $botReply = $aiService->chat($request->message);
+                    } 
+                    elseif ($data['intent'] === 'unknown') {
+                        $botReply = $aiService->chat($request->message);
+                    }else {
 
                     switch ($data['intent']) {
 
