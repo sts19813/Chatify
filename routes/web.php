@@ -5,7 +5,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\BotChatController;
 
 Route::get('/', function () {
-    return view('welcome');
+    return redirect('/chatify');
 });
 
 Route::get('/dashboard', function () {
