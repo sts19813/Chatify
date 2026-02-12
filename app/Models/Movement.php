@@ -11,6 +11,15 @@ class Movement extends Model
         'type',
         'description',
         'amount',
+        'category',
+        'currency',
+        'movement_date',
+        'notes'
+    ];
+
+    protected $casts = [
+        'movement_date' => 'date',
+        'amount' => 'decimal:2',
     ];
 
     public function user()

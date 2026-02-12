@@ -127,6 +127,15 @@ class CustomMessagesController extends BaseMessagesController
                             $botReply = $reminderService->list(Auth::id());
                             break;
 
+                        case 'movement_summary':
+                            $botReply = $movementService->getSummary(Auth::id(), $data);
+                            break;
+
+                        case 'movement_list':
+                            $botReply = $movementService->list(Auth::id(), $data);
+                            break;
+
+
                         default:
                             $botReply = json_encode(value: $data);
                     }
