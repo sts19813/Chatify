@@ -9,12 +9,18 @@ class MovementService
 {
     public function create(int $userId, array $data): string
     {
+        $description = $data['data']['description'] ?? '';
         Movement::create([
             'user_id' => $userId,
             'type' => $data['intent'],
-            'description' => $data['data']['description'],
-            'amount' => $data['data']['amount'],
+            'description' => $description,
+            'amount' => $data['data']['amount'] ?? 0,
+            'category' => $data['data']['category'] ?? null,
+            'currency' => $data['data']['currency'] ?? 'MXN',
+            'movement_date' => $data['data']['movement_date'] ?? now(),
+            'notes' => $data['data']['notes'] ?? null,
         ]);
+
 
         $balance = $this->getBalance($userId);
 
