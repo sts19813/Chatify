@@ -141,6 +141,7 @@ class CustomMessagesController extends BaseMessagesController
                             $botReply = json_encode(value: $data);
                     }
                 }
+                
 
                 // 🔹 Guardar mensaje del BOT
                 $botMessage = Chatify::newMessage([
@@ -162,6 +163,68 @@ class CustomMessagesController extends BaseMessagesController
                     ]
                 );
             }
+
+            // =========================
+            // IF TALKING TO REAL ESTATE AGENT (ID = 6)
+            // =========================
+            if ($request->id == 6) {
+
+                $aiService = new AIService();
+
+                $botReply = $aiService->realEstateAgent($request->message);
+
+                $botMessage = Chatify::newMessage([
+                    'from_id' => 6,
+                    'to_id' => Auth::id(),
+                    'body' => htmlentities(trim($botReply), ENT_QUOTES, 'UTF-8'),
+                    'attachment' => null,
+                ]);
+
+                $botMessageData = Chatify::parseMessage($botMessage);
+
+                Chatify::push(
+                    "private-chatify." . Auth::id(),
+                    'messaging',
+                    [
+                        'from_id' => 6,
+                        'to_id' => Auth::id(),
+                        'message' => Chatify::messageCard($botMessageData, true)
+                    ]
+                );
+            }
+
+            // =========================
+            // IF TALKING TO INTELLIGENT AGENT (ID = 7)
+            // =========================
+            if ($request->id == 7) {
+
+                $aiService = new AIService();
+
+                $botReply = $aiService->intelligentAgent($request->message);
+
+                $botMessage = Chatify::newMessage([
+                    'from_id' => 7,
+                    'to_id' => Auth::id(),
+                    'body' => htmlentities(trim($botReply), ENT_QUOTES, 'UTF-8'),
+                    'attachment' => null,
+                ]);
+
+                $botMessageData = Chatify::parseMessage($botMessage);
+
+                Chatify::push(
+                    "private-chatify." . Auth::id(),
+                    'messaging',
+                    [
+                        'from_id' => 7,
+                        'to_id' => Auth::id(),
+                        'message' => Chatify::messageCard($botMessageData, true)
+                    ]
+                );
+            }
+
+
+
+
         }
 
         return Response::json([

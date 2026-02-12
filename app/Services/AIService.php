@@ -214,4 +214,96 @@ User input:
         }
     }
 
+
+    public function realEstateAgent(string $message): string
+    {
+        try {
+
+            $response = Http::timeout(60)
+                ->withHeaders([
+                    'Authorization' => 'Bearer ' . env('OPENAI_API_KEY'),
+                    'Content-Type'  => 'application/json'
+                ])
+                ->post('https://api.openai.com/v1/chat/completions', [
+                    'model' => 'gpt-4o-mini',
+                    'temperature' => 0.5,
+                    'messages' => [
+                        [
+                            'role' => 'system',
+                            'content' => "
+    You are a professional real estate advisor.
+
+    Rules:
+    - You ONLY respond to real estate topics.
+    - Focus on buying, selling, renting, investing, property valuation, ROI, appreciation, mortgage, financing, and market analysis.
+    - If asked something unrelated, politely redirect to real estate topics.
+    - Never mention AI, model, OpenAI, or technical details.
+    - Maintain a professional and persuasive tone.
+    - Always respond in Spanish.
+    "
+                        ],
+                        [
+                            'role' => 'user',
+                            'content' => $message
+                        ]
+                    ]
+                ]);
+
+            if (!$response->successful()) {
+                return "Hubo un problema procesando tu solicitud.";
+            }
+
+            return $response->json()['choices'][0]['message']['content'] ?? '';
+
+        } catch (\Exception $e) {
+            return "Ocurrió un error.";
+        }
+    }
+
+
+    public function intelligentAgent(string $message): string
+    {
+        try {
+
+            $response = Http::timeout(60)
+                ->withHeaders([
+                    'Authorization' => 'Bearer ' . env('OPENAI_API_KEY'),
+                    'Content-Type'  => 'application/json'
+                ])
+                ->post('https://api.openai.com/v1/chat/completions', [
+                    'model' => 'gpt-4o-mini',
+                    'temperature' => 0.7,
+                    'messages' => [
+                        [
+                            'role' => 'system',
+                            'content' => "
+    You are a highly intelligent assistant.
+
+    Rules:
+    - Provide clear, structured, professional answers.
+    - Do not mention being a model.
+    - Do not mention OpenAI.
+    - Do not reveal technical details.
+    - Answer confidently and directly.
+    - Respond in Spanish.
+    "
+                        ],
+                        [
+                            'role' => 'user',
+                            'content' => $message
+                        ]
+                    ]
+                ]);
+
+            if (!$response->successful()) {
+                return "No pude procesar tu solicitud.";
+            }
+
+            return $response->json()['choices'][0]['message']['content'] ?? '';
+
+        } catch (\Exception $e) {
+            return "Ocurrió un error.";
+        }
+    }
+
 }
