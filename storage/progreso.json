@@ -1,0 +1,1267 @@
+{
+  "dataset_name": "KIRO Demo Municipio de Progreso - Base oficial enriquecida",
+  "generated_on": "2026-03-09",
+  "scope": {
+    "municipio": "Progreso",
+    "estado": "Yucatán",
+    "pais": "México",
+    "use_case": "Demo de atención ciudadana por WhatsApp para trámites, servicios, programas y reportes."
+  },
+  "source_notes": {
+    "description": "Base construida con información pública encontrada en fuentes oficiales del Ayuntamiento de Progreso y del Registro Estatal de Trámites y Servicios de Yucatán. Donde un dato puntual no apareció visible en el resultado público, se dejó null o una nota para validación municipal antes de producción.",
+    "official_sources": [
+      {
+        "label": "Registro Estatal de Trámites y Servicios - Municipio de Progreso",
+        "url": "https://tramites.yucatan.gob.mx/progreso"
+      },
+      {
+        "label": "Desarrollo Social del Ayuntamiento de Progreso",
+        "url": "https://ayuntamientodeprogreso.gob.mx/desarrollo_social/"
+      },
+      {
+        "label": "Servicios en línea del Ayuntamiento de Progreso",
+        "url": "https://ayuntamientodeprogreso.gob.mx/pagosenlinea.php"
+      },
+      {
+        "label": "Licencia municipal de funcionamiento",
+        "url": "https://ayuntamientodeprogreso.gob.mx/tramitelicencia.html"
+      },
+      {
+        "label": "Licencia de uso de suelo",
+        "url": "https://ayuntamientodeprogreso.gob.mx/licenciausosuelo.html"
+      },
+      {
+        "label": "Licencia de construcción",
+        "url": "https://ayuntamientodeprogreso.gob.mx/licenciaconstruccion.html"
+      }
+    ]
+  },
+  "municipio": {
+    "nombre": "Progreso",
+    "sitio_principal": "https://ayuntamientodeprogreso.gob.mx",
+    "portal_tramites": "https://tramites.yucatan.gob.mx/progreso",
+    "servicios_en_linea": "https://ayuntamientodeprogreso.gob.mx/pagosenlinea.php",
+    "contactos_generales_detectados": [
+      {
+        "area": "Asistencia al contribuyente / predial",
+        "telefonos": [
+          "9691036000",
+          "9691036005"
+        ],
+        "fuente": "https://progresoyucatan.gob.mx/serviciosinternet/predial/"
+      }
+    ]
+  },
+  "dependencias": [
+    "Dirección de Catastro y Zofemat",
+    "Dirección del Sistema Municipal para el Desarrollo Integral de la Familia",
+    "Unidad Jurídica",
+    "Dirección de Espectáculos y Regulación Comercial",
+    "Dirección de Finanzas y Tesorería",
+    "Dirección de Desarrollo Urbano y Obras Públicas",
+    "Unidad Municipal de Protección Civil",
+    "Dirección de Gestión Integral de Residuos Sólidos",
+    "Dirección de Servicios Públicos y Ecología",
+    "Sistema Municipal de Agua Potable y Alcantarillado de Progreso (SMAPAP)",
+    "Dirección de Seguridad Pública y Tránsito",
+    "Unidad de Transparencia"
+  ],
+  "tramites_y_servicios": [
+    {
+      "id": "progreso_cedula_catastral_actualizacion",
+      "nombre": "Actualización de Cédulas Catastrales",
+      "tipo": "tramite",
+      "homoclave": "PROGRESO-2886",
+      "dependencia": "Dirección de Catastro y Zofemat",
+      "descripcion": "Permite obtener una cédula catastral actualizada del predio por mejora, traslación, unión, división o rectificación.",
+      "modalidad": "Presencial",
+      "personas": [
+        "Personas físicas",
+        "Personas morales"
+      ],
+      "requisitos": [
+        "Última cédula catastral expedida",
+        "Plano catastral",
+        "Plano del proyecto autorizado (cuando aplique)",
+        "Manifiesto de traslación (cuando aplique)"
+      ],
+      "costo": {
+        "tipo": "fijo",
+        "monto_mxn": 250.0
+      },
+      "respuesta_maxima": "15 días hábiles",
+      "donde": {
+        "oficina": "Dirección de Catastro",
+        "direccion": "Calle 80 No. 153 por 31 y 33, Col. Centro, Progreso",
+        "horario": "Lunes a viernes de 08:00 a 14:00; sábado de 09:00 a 13:00",
+        "telefono": "969 103 6028",
+        "correos": [
+          "alidib@ayuntamientodeprogreso.gob.mx",
+          "direccioncatastrozofemat@gmail.com"
+        ]
+      },
+      "whatsapp_flow": {
+        "intent": "tramite_catastral",
+        "can_start_with_ine": true,
+        "extra_documents_requested": [
+          "foto o PDF de cédula catastral",
+          "plano catastral",
+          "plano del proyecto si aplica"
+        ]
+      }
+    },
+    {
+      "id": "progreso_constancia_valor_catastral",
+      "nombre": "Expedición de Constancia de Valor Catastral Vigente",
+      "tipo": "tramite",
+      "homoclave": "PROGRESO-no-visible-snippet",
+      "dependencia": "Dirección de Catastro y Zofemat",
+      "descripcion": "Permite obtener una constancia de valor catastral vigente del predio.",
+      "modalidad": "Presencial",
+      "personas": [
+        "Personas físicas",
+        "Personas morales"
+      ],
+      "requisitos": [],
+      "costo": {
+        "tipo": "consultar ficha oficial",
+        "monto_mxn": null,
+        "snippet_observado": "Resultado público muestra costo fijo y regulación vigente, pero no el detalle completo visible en el snippet."
+      },
+      "respuesta_maxima": null,
+      "donde": {
+        "oficina": "Dirección de Catastro y Zofemat"
+      },
+      "whatsapp_flow": {
+        "intent": "constancia_valor_catastral",
+        "can_start_with_ine": true,
+        "extra_documents_requested": [
+          "clave o datos catastrales del predio"
+        ]
+      }
+    },
+    {
+      "id": "progreso_constancia_alineamiento_municipal",
+      "nombre": "Constancia de Alineamiento Municipal",
+      "tipo": "tramite",
+      "homoclave": "PROGRESO-no-visible-snippet",
+      "dependencia": "Dirección de Catastro y Zofemat",
+      "descripcion": "Permite obtener la constancia de alineamiento municipal.",
+      "modalidad": "Presencial",
+      "personas": [
+        "Personas físicas",
+        "Personas morales"
+      ],
+      "requisitos": [
+        "Constancia de alineamiento municipal",
+        "documentación técnica según ficha"
+      ],
+      "costo": {
+        "tipo": "fijo",
+        "monto_mxn": 530.0
+      },
+      "respuesta_maxima": null,
+      "donde": {
+        "oficina": "Dirección de Catastro y Zofemat",
+        "telefono": "969 103 6028"
+      },
+      "whatsapp_flow": {
+        "intent": "alineamiento_municipal",
+        "can_start_with_ine": true,
+        "extra_documents_requested": [
+          "datos del predio",
+          "plano si aplica"
+        ]
+      }
+    },
+    {
+      "id": "progreso_constancia_residencia",
+      "nombre": "Carta de Residencia (Carta de Vecindad)",
+      "tipo": "servicio",
+      "homoclave": "PROGRESO-no-visible-snippet",
+      "dependencia": "Unidad Jurídica",
+      "descripcion": "Permite obtener un documento que acredite el domicilio actual para trámites ante instituciones públicas o privadas.",
+      "modalidad": "Presencial",
+      "personas": [
+        "Personas físicas"
+      ],
+      "requisitos": [
+        "INE u otra identificación",
+        "comprobante de domicilio",
+        "datos personales"
+      ],
+      "costo": {
+        "tipo": "consultar ficha oficial",
+        "monto_mxn": null
+      },
+      "respuesta_maxima": null,
+      "donde": {
+        "oficina": "Unidad Jurídica",
+        "telefono": "969 103 6021 Ext. 1121",
+        "correo": "jorge.victoria@ayuntamientodeprogreso.gob.mx"
+      },
+      "whatsapp_flow": {
+        "intent": "carta_residencia",
+        "can_start_with_ine": true,
+        "extra_documents_requested": [
+          "comprobante de domicilio reciente"
+        ]
+      }
+    },
+    {
+      "id": "progreso_constancia_identidad",
+      "nombre": "Carta de Identidad",
+      "tipo": "servicio",
+      "homoclave": "PROGRESO-2947",
+      "dependencia": "Unidad Jurídica",
+      "descripcion": "Permite acreditar la identidad del ciudadano o de menores que no cuentan con INE.",
+      "modalidad": "Presencial",
+      "personas": [
+        "Personas físicas"
+      ],
+      "requisitos": [
+        "datos de identidad",
+        "documentos de respaldo según ficha oficial"
+      ],
+      "costo": {
+        "tipo": "consultar ficha oficial",
+        "monto_mxn": null
+      },
+      "respuesta_maxima": null,
+      "donde": {
+        "oficina": "Unidad Jurídica",
+        "telefono": "969 103 6021 Ext. 1121",
+        "correo": "jorge.victoria@ayuntamientodeprogreso.gob.mx"
+      },
+      "whatsapp_flow": {
+        "intent": "carta_identidad",
+        "can_start_with_ine": false,
+        "extra_documents_requested": [
+          "acta o documentos alternos de identidad",
+          "fotografía"
+        ]
+      }
+    },
+    {
+      "id": "progreso_licencia_funcionamiento_apertura",
+      "nombre": "Licencia de Funcionamiento - Apertura",
+      "tipo": "tramite",
+      "homoclave": "PROGRESO-2905",
+      "dependencia": "Dirección de Espectáculos y Regulación Comercial",
+      "descripcion": "Permite obtener la licencia municipal de funcionamiento para apertura de establecimiento comercial.",
+      "modalidad": "Presencial",
+      "personas": [
+        "Personas físicas",
+        "Personas morales"
+      ],
+      "requisitos": [
+        "Formato Único de Apertura",
+        "Documento que acredite la posesión legal del predio",
+        "Identificación oficial",
+        "RFC / constancia de situación fiscal",
+        "Predial al corriente",
+        "Licencia de uso de suelo",
+        "Plano y cédula catastral",
+        "Oficio de Protección Civil",
+        "Recibo de agua potable",
+        "Fotografías interior y exterior",
+        "Acta constitutiva si es persona moral"
+      ],
+      "costo": {
+        "tipo": "según giro / ley de ingresos",
+        "monto_mxn": null
+      },
+      "respuesta_maxima": null,
+      "donde": {
+        "oficina": "Dirección de Espectáculos y Regulación Comercial",
+        "telefono": "969 103 6000 Ext. 1120",
+        "correo": "erika.alcocer@ayuntamientodeprogreso.gob.mx"
+      },
+      "whatsapp_flow": {
+        "intent": "apertura_negocio",
+        "can_start_with_ine": true,
+        "extra_documents_requested": [
+          "foto de INE",
+          "RFC",
+          "predial pagado",
+          "licencia de uso de suelo",
+          "protección civil",
+          "fotos del local"
+        ]
+      }
+    },
+    {
+      "id": "progreso_licencia_funcionamiento_renovacion",
+      "nombre": "Licencia de Funcionamiento - Renovación",
+      "tipo": "tramite",
+      "homoclave": "PROGRESO-367a1845",
+      "dependencia": "Dirección de Espectáculos y Regulación Comercial",
+      "descripcion": "Permite renovar un establecimiento comercial de acuerdo al giro solicitado.",
+      "modalidad": "Presencial",
+      "personas": [
+        "Personas físicas",
+        "Personas morales"
+      ],
+      "requisitos": [
+        "licencia vencida",
+        "predial pagado",
+        "requisitos adicionales según giro"
+      ],
+      "costo": {
+        "tipo": "según giro / ley de ingresos",
+        "monto_mxn": null
+      },
+      "respuesta_maxima": null,
+      "donde": {
+        "oficina": "Dirección de Espectáculos y Regulación Comercial",
+        "telefono": "969 103 6000 Ext. 1120",
+        "correo": "erika.alcocer@ayuntamientodeprogreso.gob.mx"
+      },
+      "whatsapp_flow": {
+        "intent": "renovacion_licencia_funcionamiento",
+        "can_start_with_ine": true,
+        "extra_documents_requested": [
+          "número o foto de licencia anterior",
+          "predial"
+        ]
+      }
+    },
+    {
+      "id": "progreso_renovacion_licencia_alcohol",
+      "nombre": "Renovación de Licencia para Venta de Bebidas Alcohólicas",
+      "tipo": "tramite",
+      "homoclave": "PROGRESO-no-visible-snippet",
+      "dependencia": "Dirección de Espectáculos y Regulación Comercial",
+      "descripcion": "Permite renovar la licencia para venta de bebidas alcohólicas.",
+      "modalidad": "Presencial",
+      "personas": [
+        "Personas físicas",
+        "Personas morales"
+      ],
+      "requisitos": [
+        "licencia vigente o vencida",
+        "requisitos fiscales y municipales"
+      ],
+      "costo": {
+        "tipo": "según ley de ingresos",
+        "monto_mxn": null
+      },
+      "respuesta_maxima": null,
+      "donde": {
+        "oficina": "Dirección de Espectáculos y Regulación Comercial",
+        "telefono": "969 103 6000 Ext. 1120"
+      },
+      "whatsapp_flow": {
+        "intent": "renovacion_alcohol",
+        "can_start_with_ine": true,
+        "extra_documents_requested": [
+          "licencia actual",
+          "documentos fiscales"
+        ]
+      }
+    },
+    {
+      "id": "progreso_licencia_uso_suelo",
+      "nombre": "Licencia de Uso de Suelo",
+      "tipo": "tramite",
+      "homoclave": null,
+      "dependencia": "Dirección de Desarrollo Urbano y Obras Públicas",
+      "descripcion": "Autorización oficial emitida por la autoridad municipal para el uso de suelo e informar restricciones federales, estatales y municipales.",
+      "modalidad": "Presencial",
+      "personas": [
+        "Personas físicas",
+        "Personas morales"
+      ],
+      "requisitos": [
+        "documentación del predio",
+        "formato correspondiente",
+        "planos cuando aplique"
+      ],
+      "costo": {
+        "tipo": "según ley de ingresos",
+        "monto_mxn": null
+      },
+      "respuesta_maxima": null,
+      "donde": {
+        "oficina": "Dirección de Desarrollo Urbano y Obras Públicas"
+      },
+      "whatsapp_flow": {
+        "intent": "uso_suelo",
+        "can_start_with_ine": true,
+        "extra_documents_requested": [
+          "datos del predio",
+          "plano",
+          "escritura o posesión"
+        ]
+      }
+    },
+    {
+      "id": "progreso_licencia_construccion",
+      "nombre": "Licencia de Construcción",
+      "tipo": "tramite",
+      "homoclave": null,
+      "dependencia": "Dirección de Desarrollo Urbano y Obras Públicas",
+      "descripcion": "Autorización oficial para realizar obras de edificación conforme a un proyecto.",
+      "modalidad": "Presencial",
+      "personas": [
+        "Personas físicas",
+        "Personas morales"
+      ],
+      "requisitos": [
+        "planos",
+        "datos del predio",
+        "documentación de propiedad",
+        "requisitos técnicos del proyecto"
+      ],
+      "costo": {
+        "tipo": "según proyecto / ley de ingresos",
+        "monto_mxn": null
+      },
+      "respuesta_maxima": null,
+      "donde": {
+        "oficina": "Dirección de Desarrollo Urbano y Obras Públicas"
+      },
+      "whatsapp_flow": {
+        "intent": "licencia_construccion",
+        "can_start_with_ine": true,
+        "extra_documents_requested": [
+          "plano arquitectónico",
+          "cédula o plano catastral",
+          "documento del predio"
+        ]
+      }
+    },
+    {
+      "id": "progreso_proteccion_civil_constancia",
+      "nombre": "Constancia de Cumplimiento en Protección Civil",
+      "tipo": "tramite",
+      "homoclave": "PROGRESO-3041",
+      "dependencia": "Unidad Municipal de Protección Civil",
+      "descripcion": "Permite constatar que un establecimiento cumpla con medidas básicas y preventivas de seguridad en materia de protección civil.",
+      "modalidad": "Presencial",
+      "personas": [
+        "Personas físicas",
+        "Personas morales"
+      ],
+      "requisitos": [
+        "escrito libre o formato de solicitud de verificación",
+        "datos del establecimiento",
+        "documentación adicional según giro"
+      ],
+      "costo": {
+        "tipo": "según ley de ingresos",
+        "monto_mxn": null
+      },
+      "respuesta_maxima": null,
+      "donde": {
+        "oficina": "Unidad Municipal de Protección Civil",
+        "telefono": "969 103 7286",
+        "correo": "aurelio.medina@ayuntamientodeprogreso.gob.mx"
+      },
+      "whatsapp_flow": {
+        "intent": "proteccion_civil_negocio",
+        "can_start_with_ine": true,
+        "extra_documents_requested": [
+          "datos del negocio",
+          "domicilio",
+          "giro",
+          "fotos del local"
+        ]
+      }
+    },
+    {
+      "id": "progreso_recolecta_pago_regularizacion",
+      "nombre": "Pago y Regulación del Servicio de Recolecta",
+      "tipo": "servicio",
+      "homoclave": "PROGRESO-2928",
+      "dependencia": "Dirección de Gestión Integral de Residuos Sólidos",
+      "descripcion": "Permite pagar la tarifa mensual o anual del servicio de recolecta de basura y regularizar adeudos.",
+      "modalidad": "Trámite 100% en línea",
+      "personas": [
+        "Personas físicas",
+        "Personas morales"
+      ],
+      "requisitos": [
+        "número de cuenta",
+        "comprobante de pago del servicio de recolección y traslado de residuos con empresa autorizada"
+      ],
+      "costo": {
+        "tipo": "según tarifa mensual o anual",
+        "monto_mxn": null
+      },
+      "respuesta_maxima": null,
+      "donde": {
+        "oficina": "Dirección de Gestión Integral de Residuos Sólidos",
+        "telefono": "969 103 6494",
+        "correo": "yaremi.zarate@ayuntamientodeprogreso.gob.mx"
+      },
+      "whatsapp_flow": {
+        "intent": "pago_recolecta_basura",
+        "can_start_with_ine": true,
+        "extra_documents_requested": [
+          "número de cuenta",
+          "comprobante previo si busca regularización"
+        ]
+      }
+    },
+    {
+      "id": "progreso_alumbrado_publico",
+      "nombre": "Mantenimiento de Alumbrado Público",
+      "tipo": "servicio",
+      "homoclave": "PROGRESO-2793",
+      "dependencia": "Dirección de Servicios Públicos y Ecología",
+      "descripcion": "Servicio para reportar fallas en el alumbrado público.",
+      "modalidad": "Presencial",
+      "personas": [
+        "Personas físicas"
+      ],
+      "requisitos": [
+        "ubicación exacta",
+        "referencias",
+        "fotografía opcional"
+      ],
+      "costo": {
+        "tipo": "gratuito",
+        "monto_mxn": 0.0
+      },
+      "respuesta_maxima": null,
+      "donde": {
+        "oficina": "Dirección de Servicios Públicos y Ecología"
+      },
+      "whatsapp_flow": {
+        "intent": "reporte_luminaria",
+        "can_start_with_ine": false,
+        "extra_documents_requested": [
+          "ubicación en mapa o referencia",
+          "foto opcional",
+          "descripción corta"
+        ]
+      }
+    },
+    {
+      "id": "progreso_rejillas_tapas_pozo_escarpas",
+      "nombre": "Mantenimiento de Rejillas, Tapas de Pozo y Escarpas en mal estado",
+      "tipo": "servicio",
+      "homoclave": "PROGRESO-2797",
+      "dependencia": "Dirección de Servicios Públicos y Ecología",
+      "descripcion": "Servicio para reportes de vía pública relacionados con rejillas, tapas de pozo y escarpas en mal estado.",
+      "modalidad": "Presencial",
+      "personas": [
+        "Personas físicas"
+      ],
+      "requisitos": [
+        "ubicación exacta",
+        "foto opcional",
+        "descripción"
+      ],
+      "costo": {
+        "tipo": "gratuito",
+        "monto_mxn": 0.0
+      },
+      "respuesta_maxima": null,
+      "donde": {
+        "oficina": "Dirección de Servicios Públicos y Ecología"
+      },
+      "whatsapp_flow": {
+        "intent": "reporte_via_publica",
+        "can_start_with_ine": false,
+        "extra_documents_requested": [
+          "ubicación",
+          "foto",
+          "detalle del problema"
+        ]
+      }
+    },
+    {
+      "id": "progreso_barrido_deshierbe_basura_calles",
+      "nombre": "Barrido, Deshierbe y Levantamiento de Basura en Calles",
+      "tipo": "servicio",
+      "homoclave": null,
+      "dependencia": "Dirección de Servicios Públicos y Ecología",
+      "descripcion": "Permite brindar atención oportuna mediante barrido, deshierbe y levantamiento de basura de calles del municipio y comisarías.",
+      "modalidad": "Presencial",
+      "personas": [
+        "Personas físicas"
+      ],
+      "requisitos": [
+        "ubicación del punto",
+        "evidencia opcional"
+      ],
+      "costo": {
+        "tipo": "gratuito",
+        "monto_mxn": 0.0
+      },
+      "respuesta_maxima": null,
+      "donde": {
+        "oficina": "Dirección de Servicios Públicos y Ecología",
+        "telefono": "969 103 7280",
+        "whatsapp": "9991696515",
+        "correo": "marian.mmp61@gmail.com"
+      },
+      "whatsapp_flow": {
+        "intent": "reporte_basura_calle",
+        "can_start_with_ine": false,
+        "extra_documents_requested": [
+          "ubicación",
+          "foto",
+          "colonia/comisaría"
+        ]
+      }
+    },
+    {
+      "id": "progreso_agua_contrato_domestico",
+      "nombre": "Contrato de Suministro de Agua Potable Doméstico",
+      "tipo": "tramite",
+      "homoclave": "PROGRESO-3056",
+      "dependencia": "SMAPAP",
+      "descripcion": "Permite instalar una toma para suministro de agua potable en casa habitación.",
+      "modalidad": "Presencial",
+      "personas": [
+        "Personas físicas"
+      ],
+      "requisitos": [
+        "recibo de impuesto predial",
+        "plano catastral",
+        "identificación oficial",
+        "carta poder simple cuando aplique"
+      ],
+      "costo": {
+        "tipo": "según caso; con facilidades de pago",
+        "monto_mxn": null
+      },
+      "respuesta_maxima": null,
+      "donde": {
+        "oficina": "Sistema Municipal de Agua Potable y Alcantarillado de Progreso (SMAPAP)",
+        "telefono": "969 935 0134",
+        "correo": "juridicosmapap@gmail.com"
+      },
+      "whatsapp_flow": {
+        "intent": "contrato_agua_domestico",
+        "can_start_with_ine": true,
+        "extra_documents_requested": [
+          "predial",
+          "plano catastral",
+          "dirección exacta del predio"
+        ]
+      }
+    },
+    {
+      "id": "progreso_agua_cambio_nombre",
+      "nombre": "Cambio de Nombre al Contrato de Agua Potable",
+      "tipo": "tramite",
+      "homoclave": null,
+      "dependencia": "SMAPAP",
+      "descripcion": "Permite al ciudadano realizar el cambio de propietario en el contrato de agua potable.",
+      "modalidad": "Presencial",
+      "personas": [
+        "Personas físicas"
+      ],
+      "requisitos": [
+        "documentación de propiedad",
+        "contrato o número de cuenta",
+        "identificación oficial"
+      ],
+      "costo": {
+        "tipo": "consultar ficha oficial",
+        "monto_mxn": null
+      },
+      "respuesta_maxima": null,
+      "donde": {
+        "oficina": "SMAPAP",
+        "telefono": "969 935 0134",
+        "correo": "juridicosmapap@gmail.com"
+      },
+      "whatsapp_flow": {
+        "intent": "cambio_nombre_agua",
+        "can_start_with_ine": true,
+        "extra_documents_requested": [
+          "número de contrato o cuenta",
+          "predial o documento de propiedad"
+        ]
+      }
+    },
+    {
+      "id": "progreso_agua_cancelacion_contrato",
+      "nombre": "Cancelación del Contrato de Suministro de Agua Potable",
+      "tipo": "tramite",
+      "homoclave": null,
+      "dependencia": "SMAPAP",
+      "descripcion": "Permite cancelar el contrato de suministro de agua potable.",
+      "modalidad": "Presencial",
+      "personas": [
+        "Personas físicas"
+      ],
+      "requisitos": [
+        "identificación",
+        "datos del contrato",
+        "documentación de soporte"
+      ],
+      "costo": {
+        "tipo": "consultar ficha oficial",
+        "monto_mxn": null
+      },
+      "respuesta_maxima": null,
+      "donde": {
+        "oficina": "SMAPAP",
+        "telefono": "969 935 0134",
+        "correo": "juridicosmapap@gmail.com"
+      },
+      "whatsapp_flow": {
+        "intent": "cancelacion_agua",
+        "can_start_with_ine": true,
+        "extra_documents_requested": [
+          "número de contrato",
+          "motivo de cancelación"
+        ]
+      }
+    },
+    {
+      "id": "progreso_agua_certificado_inexistencia_contrato",
+      "nombre": "Certificado de Inexistencia de Contrato de Agua Potable",
+      "tipo": "tramite",
+      "homoclave": null,
+      "dependencia": "SMAPAP",
+      "descripcion": "Permite obtener un documento que certifique que un predio no cuenta con contrato ni servicio de agua potable.",
+      "modalidad": "Presencial",
+      "personas": [
+        "Personas físicas"
+      ],
+      "requisitos": [
+        "datos del predio",
+        "identificación",
+        "documentos de soporte"
+      ],
+      "costo": {
+        "tipo": "consultar ficha oficial",
+        "monto_mxn": null
+      },
+      "respuesta_maxima": null,
+      "donde": {
+        "oficina": "SMAPAP",
+        "telefono": "969 935 0134",
+        "correo": "juridicosmapap@gmail.com"
+      },
+      "whatsapp_flow": {
+        "intent": "certificado_sin_agua",
+        "can_start_with_ine": true,
+        "extra_documents_requested": [
+          "ubicación del predio",
+          "plano o predial si lo tiene"
+        ]
+      }
+    },
+    {
+      "id": "progreso_carga_descarga",
+      "nombre": "Permiso para Carga y Descarga",
+      "tipo": "tramite",
+      "homoclave": null,
+      "dependencia": "Dirección de Seguridad Pública y Tránsito",
+      "descripcion": "Permite otorgar un permiso para realizar carga y/o descarga de mercancías, materiales u objetos en lugar y horario solicitado.",
+      "modalidad": "Presencial",
+      "personas": [
+        "Particulares",
+        "empresas"
+      ],
+      "requisitos": [
+        "licencia del conductor",
+        "datos del vehículo",
+        "lugar y horario solicitado"
+      ],
+      "costo": {
+        "tipo": "consultar ficha oficial",
+        "monto_mxn": null
+      },
+      "respuesta_maxima": null,
+      "donde": {
+        "oficina": "Dirección de Seguridad Pública y Tránsito",
+        "telefonos": [
+          "969 935 0026",
+          "969 935 6478"
+        ],
+        "correo": "cajadsptprogreso@gmail.com"
+      },
+      "whatsapp_flow": {
+        "intent": "permiso_carga_descarga",
+        "can_start_with_ine": true,
+        "extra_documents_requested": [
+          "licencia",
+          "placas",
+          "fecha y horario",
+          "ubicación"
+        ]
+      }
+    },
+    {
+      "id": "progreso_liberacion_vehiculos",
+      "nombre": "Liberación de Vehículos",
+      "tipo": "tramite",
+      "homoclave": null,
+      "dependencia": "Dirección de Seguridad Pública y Tránsito",
+      "descripcion": "Permite la liberación de vehículos detenidos por faltas al reglamento de tránsito.",
+      "modalidad": "Presencial",
+      "personas": [
+        "Personas físicas"
+      ],
+      "requisitos": [
+        "licencia de conducir",
+        "documentación del vehículo",
+        "pago o resolución correspondiente"
+      ],
+      "costo": {
+        "tipo": "consultar ficha oficial",
+        "monto_mxn": null
+      },
+      "respuesta_maxima": null,
+      "donde": {
+        "oficina": "Dirección de Seguridad Pública y Tránsito",
+        "telefonos": [
+          "969 935 0026",
+          "969 935 6478"
+        ],
+        "correo": "cajadsptprogreso@gmail.com"
+      },
+      "whatsapp_flow": {
+        "intent": "liberacion_vehiculo",
+        "can_start_with_ine": true,
+        "extra_documents_requested": [
+          "licencia",
+          "tarjeta de circulación",
+          "placas",
+          "folio de infracción si existe"
+        ]
+      }
+    },
+    {
+      "id": "progreso_transparencia_solicitudes",
+      "nombre": "Trámites de la Unidad de Transparencia",
+      "tipo": "servicio",
+      "homoclave": null,
+      "dependencia": "Unidad de Transparencia",
+      "descripcion": "Atención de solicitudes ante la Unidad de Transparencia del municipio.",
+      "modalidad": "Presencial",
+      "personas": [
+        "Público en general"
+      ],
+      "requisitos": [
+        "solicitud correspondiente"
+      ],
+      "costo": {
+        "tipo": "según trámite",
+        "monto_mxn": null
+      },
+      "respuesta_maxima": null,
+      "donde": {
+        "oficina": "Unidad de Transparencia de Progreso",
+        "direccion": "Calle 29 entre 18 y 20, Tablaje Catastral 4520, Avenida Puerto de Abrigo, Yucalpetén, Progreso, Yucatán, C.P. 97320",
+        "horario": "Lunes a viernes de 08:00 a 15:00",
+        "telefono": "969 688 1192",
+        "correo": "solicitudes@ayuntamientodeprogreso.gob.mx"
+      },
+      "whatsapp_flow": {
+        "intent": "transparencia",
+        "can_start_with_ine": true,
+        "extra_documents_requested": [
+          "detalle de la solicitud",
+          "medio de contacto"
+        ]
+      }
+    }
+  ],
+  "programas_y_apoyos": [
+    {
+      "id": "progreso_despensa_estatal",
+      "nombre": "Apoyo de Despensa Estatal",
+      "homoclave": "PROGRESO-2865",
+      "dependencia": "DIF Municipal de Progreso",
+      "descripcion": "Otorga una despensa mensual a beneficiarios para contribuir al estado nutricional y desarrollo de personas en situación de vulnerabilidad.",
+      "tipo": "programa_apoyo",
+      "modalidad": "Presencial",
+      "requisitos": [
+        "Acta de nacimiento",
+        "INE",
+        "Comprobante de domicilio no mayor a 3 meses"
+      ],
+      "costo": {
+        "tipo": "fijo",
+        "monto_mxn": 2.0
+      },
+      "vigencia": "1 año",
+      "respuesta_maxima": "60 días hábiles",
+      "donde": {
+        "oficina": "DIF Municipal de Progreso",
+        "direccion": "Calle 39 S/N por 112 y 114, Col. Vicente Guerrero, Progreso",
+        "horario": "Lunes a viernes de 08:00 a 14:00",
+        "telefono": "969 103 6857",
+        "correo": "malena.herrera@ayuntamientodeprogreso.gob.mx"
+      },
+      "whatsapp_flow": {
+        "intent": "programa_despensa_estatal",
+        "can_start_with_ine": true,
+        "extra_documents_requested": [
+          "acta de nacimiento",
+          "comprobante de domicilio"
+        ]
+      }
+    },
+    {
+      "id": "progreso_despensa_municipal",
+      "nombre": "Apoyo de Despensa Municipal",
+      "homoclave": null,
+      "dependencia": "DIF Municipal de Progreso",
+      "descripcion": "Otorga una despensa mensual para contribuir a la seguridad alimentaria de personas en situación de vulnerabilidad.",
+      "tipo": "programa_apoyo",
+      "modalidad": "Presencial",
+      "requisitos": [
+        "INE",
+        "comprobante de domicilio",
+        "documentación socioeconómica según validación"
+      ],
+      "costo": {
+        "tipo": "consultar ficha oficial",
+        "monto_mxn": null
+      },
+      "vigencia": null,
+      "respuesta_maxima": null,
+      "donde": {
+        "oficina": "DIF Municipal de Progreso",
+        "telefono": "969 103 6857"
+      },
+      "whatsapp_flow": {
+        "intent": "programa_despensa_municipal",
+        "can_start_with_ine": true,
+        "extra_documents_requested": [
+          "comprobante de domicilio",
+          "datos familiares"
+        ]
+      }
+    },
+    {
+      "id": "progreso_despensas_rezago_social",
+      "nombre": "Programa Municipal para la Asistencia Alimentaria de Grupos en Situación de Rezago Social",
+      "homoclave": null,
+      "dependencia": "Desarrollo Social / DIF según operación municipal",
+      "descripcion": "Programa municipal de asistencia alimentaria visible en el portal de Desarrollo Social y en padrones 2025.",
+      "tipo": "programa_apoyo",
+      "modalidad": "Presencial",
+      "requisitos": [
+        "INE",
+        "comprobante de domicilio",
+        "validación de vulnerabilidad"
+      ],
+      "costo": {
+        "tipo": "no visible en portada",
+        "monto_mxn": null
+      },
+      "vigencia": "según ejercicio anual",
+      "respuesta_maxima": null,
+      "donde": {
+        "oficina": "Ayuntamiento de Progreso - Desarrollo Social"
+      },
+      "whatsapp_flow": {
+        "intent": "apoyo_alimentario_rezago",
+        "can_start_with_ine": true,
+        "extra_documents_requested": [
+          "comprobante de domicilio",
+          "integrantes del hogar"
+        ]
+      }
+    },
+    {
+      "id": "progreso_1000_dias",
+      "nombre": "Asistencia Alimentaria en los Primeros 1000 Días de Vida",
+      "homoclave": null,
+      "dependencia": "DIF Municipal de Progreso",
+      "descripcion": "Contribuye al estado nutricional y desarrollo de niñas y niños en situación de vulnerabilidad durante sus primeros 1000 días de vida.",
+      "tipo": "programa_apoyo",
+      "modalidad": "Presencial",
+      "requisitos": [
+        "documentación del menor",
+        "INE del tutor",
+        "comprobante de domicilio"
+      ],
+      "costo": {
+        "tipo": "consultar ficha oficial",
+        "monto_mxn": null
+      },
+      "vigencia": null,
+      "respuesta_maxima": null,
+      "donde": {
+        "oficina": "DIF Municipal de Progreso"
+      },
+      "whatsapp_flow": {
+        "intent": "programa_1000_dias",
+        "can_start_with_ine": true,
+        "extra_documents_requested": [
+          "acta del menor",
+          "curp del menor",
+          "comprobante de domicilio"
+        ]
+      }
+    },
+    {
+      "id": "progreso_medicamentos_rayosx",
+      "nombre": "Apoyo de Medicamentos y Rayos X a Personas en Situación Vulnerable",
+      "homoclave": "PROGRESO-2869",
+      "dependencia": "DIF Municipal de Progreso",
+      "descripcion": "Entrega mensual de medicamentos y apoyo de Rayos X a personas en situación vulnerable.",
+      "tipo": "programa_apoyo",
+      "modalidad": "Presencial",
+      "requisitos": [
+        "Acta de nacimiento",
+        "INE",
+        "Comprobante de domicilio",
+        "Diagnóstico, tratamiento o prescripción médica"
+      ],
+      "costo": {
+        "tipo": "gratuito",
+        "monto_mxn": 0.0
+      },
+      "vigencia": "Permanente",
+      "respuesta_maxima": "2 días hábiles",
+      "donde": {
+        "oficina": "DIF Municipal de Progreso",
+        "direccion": "Calle 39 S/N por 112 y 114, Col. Vicente Guerrero, Progreso",
+        "horario": "Lunes a viernes de 08:00 a 14:00",
+        "telefono": "969 103 6857",
+        "correo": "malena.herrera@ayuntamientodeprogreso.gob.mx"
+      },
+      "whatsapp_flow": {
+        "intent": "apoyo_medicamentos",
+        "can_start_with_ine": true,
+        "extra_documents_requested": [
+          "receta o diagnóstico",
+          "comprobante de domicilio"
+        ]
+      }
+    },
+    {
+      "id": "progreso_ortopedico_protesis_auditivos",
+      "nombre": "Apoyo Ortopédico, Prótesis y Auxiliares Auditivos",
+      "homoclave": "PROGRESO-2863",
+      "dependencia": "DIF Municipal de Progreso",
+      "descripcion": "Brinda apoyo a personas con discapacidad o en condición vulnerable mediante aparatos ortopédicos, prótesis y auxiliares auditivos.",
+      "tipo": "programa_apoyo",
+      "modalidad": "Presencial",
+      "requisitos": [
+        "Acta de nacimiento",
+        "Comprobante de domicilio",
+        "INE de padres o tutor si es menor",
+        "Diagnóstico o prescripción médica"
+      ],
+      "costo": {
+        "tipo": "gratuito",
+        "monto_mxn": 0.0
+      },
+      "vigencia": "Permanente",
+      "respuesta_maxima": "30 días hábiles",
+      "donde": {
+        "oficina": "DIF Municipal de Progreso",
+        "direccion": "Calle 39 S/N por 112 y 114, Col. Vicente Guerrero, Progreso",
+        "horario": "Lunes a viernes de 08:00 a 14:00",
+        "telefono": "969 103 6857",
+        "correo": "malena.herrera@ayuntamientodeprogreso.gob.mx"
+      },
+      "whatsapp_flow": {
+        "intent": "apoyo_ortopedico",
+        "can_start_with_ine": true,
+        "extra_documents_requested": [
+          "diagnóstico médico",
+          "comprobante de domicilio",
+          "datos del beneficiario"
+        ]
+      }
+    },
+    {
+      "id": "progreso_atencion_psicologica_juridica_mujeres",
+      "nombre": "Atención Psicológica y Asesoría Jurídica a Mujeres en Situación de Violencia",
+      "homoclave": null,
+      "dependencia": "Instituto Municipal de la Mujer / atención especializada municipal",
+      "descripcion": "Brinda atención psicológica y asesoría jurídica a mujeres que enfrentan dificultades emocionales o violencia de género.",
+      "tipo": "programa_apoyo",
+      "modalidad": "Presencial",
+      "requisitos": [
+        "identificación y datos básicos",
+        "documentación adicional según caso"
+      ],
+      "costo": {
+        "tipo": "no visible en snippet; normalmente apoyo social",
+        "monto_mxn": null
+      },
+      "vigencia": null,
+      "respuesta_maxima": null,
+      "donde": {
+        "oficina": "Atención a mujeres / municipio de Progreso"
+      },
+      "whatsapp_flow": {
+        "intent": "apoyo_mujer_violencia",
+        "can_start_with_ine": true,
+        "extra_documents_requested": [
+          "nombre",
+          "teléfono seguro",
+          "descripción del apoyo requerido"
+        ]
+      }
+    },
+    {
+      "id": "progreso_mujeres_en_grandeza",
+      "nombre": "Programa Mujeres en Grandeza",
+      "homoclave": null,
+      "dependencia": "Desarrollo Social del Ayuntamiento de Progreso",
+      "descripcion": "Programa visible en el portal de Desarrollo Social con reglas de operación y estadísticas del padrón 2025.",
+      "tipo": "programa_apoyo",
+      "modalidad": "Presencial",
+      "requisitos": [
+        "consultar convocatoria/reglas vigentes",
+        "INE",
+        "comprobante de domicilio"
+      ],
+      "costo": {
+        "tipo": "no visible en portada",
+        "monto_mxn": null
+      },
+      "vigencia": "según ejercicio 2025 y reglas de operación",
+      "respuesta_maxima": null,
+      "donde": {
+        "oficina": "Desarrollo Social del Ayuntamiento de Progreso"
+      },
+      "whatsapp_flow": {
+        "intent": "mujeres_en_grandeza",
+        "can_start_with_ine": true,
+        "extra_documents_requested": [
+          "comprobante de domicilio",
+          "datos socioeconómicos"
+        ]
+      }
+    },
+    {
+      "id": "progreso_inapam_modulo",
+      "nombre": "INAPAM – Módulo de Atención",
+      "homoclave": null,
+      "dependencia": "Desarrollo Social del Ayuntamiento de Progreso",
+      "descripcion": "Servicio/programa listado en el portal de Desarrollo Social para atención a personas adultas mayores.",
+      "tipo": "programa_apoyo",
+      "modalidad": "Presencial",
+      "requisitos": [
+        "consultar módulo y convocatoria"
+      ],
+      "costo": {
+        "tipo": "no visible",
+        "monto_mxn": null
+      },
+      "vigencia": null,
+      "respuesta_maxima": null,
+      "donde": {
+        "oficina": "Desarrollo Social del Ayuntamiento de Progreso"
+      },
+      "whatsapp_flow": {
+        "intent": "inapam_modulo",
+        "can_start_with_ine": true,
+        "extra_documents_requested": [
+          "edad",
+          "domicilio",
+          "documentos de identidad"
+        ]
+      }
+    },
+    {
+      "id": "progreso_pension_alimenticia_adulto_mayor_capacidades_diferentes",
+      "nombre": "Pensión Alimenticia para Adulto Mayor y Capacidades Diferentes",
+      "homoclave": null,
+      "dependencia": "Desarrollo Social del Ayuntamiento de Progreso",
+      "descripcion": "Programa listado en el portal de Desarrollo Social.",
+      "tipo": "programa_apoyo",
+      "modalidad": "Presencial",
+      "requisitos": [
+        "consultar reglas o convocatoria"
+      ],
+      "costo": {
+        "tipo": "no visible",
+        "monto_mxn": null
+      },
+      "vigencia": null,
+      "respuesta_maxima": null,
+      "donde": {
+        "oficina": "Desarrollo Social del Ayuntamiento de Progreso"
+      },
+      "whatsapp_flow": {
+        "intent": "pension_alimenticia_adulto_mayor",
+        "can_start_with_ine": true,
+        "extra_documents_requested": [
+          "edad o condición",
+          "comprobante de domicilio",
+          "datos del beneficiario"
+        ]
+      }
+    }
+  ],
+  "faq_sugeridas_para_demo": [
+    "¿Cómo saco mi licencia de funcionamiento para abrir un negocio?",
+    "¿Qué necesito para la licencia de uso de suelo?",
+    "¿Dónde tramito una licencia de construcción?",
+    "¿Cómo obtengo una constancia de residencia o vecindad?",
+    "¿Cómo saco una carta de identidad para un menor que no tiene INE?",
+    "¿Cómo contrato el agua potable para mi casa?",
+    "¿Cómo cambio el nombre del contrato de agua?",
+    "¿Cómo reporto una lámpara apagada?",
+    "¿Cómo regularizo mi pago de recolecta de basura?",
+    "¿Hay apoyo de despensa en Progreso?",
+    "¿Hay apoyo de medicamentos o rayos X?",
+    "¿Hay apoyo para aparatos ortopédicos o auditivos?",
+    "¿Hay atención psicológica o jurídica para mujeres?",
+    "¿Dónde queda la Unidad de Transparencia?"
+  ],
+  "whatsapp_master_flows": {
+    "identificacion_inicial": [
+      "Solicitar foto frontal de INE",
+      "Extraer nombre completo",
+      "Extraer domicilio si es visible; si no, pedirlo por texto",
+      "Pedir teléfono de contacto",
+      "Confirmar consentimiento para iniciar pre-registro"
+    ],
+    "tramite": [
+      "Identificar trámite solicitado",
+      "Explicar objetivo y modalidad",
+      "Listar requisitos oficiales detectados",
+      "Solicitar documentos faltantes uno por uno",
+      "Generar pre-folio interno",
+      "Canalizar a dependencia correcta"
+    ],
+    "programa_apoyo": [
+      "Identificar programa o necesidad ciudadana",
+      "Validar si aplica perfil básico",
+      "Solicitar INE y comprobante de domicilio",
+      "Solicitar documento médico, socioeconómico o acta cuando aplique",
+      "Generar pre-registro",
+      "Informar oficina, horario y tiempo estimado"
+    ],
+    "reporte_servicio_publico": [
+      "Solicitar ubicación exacta",
+      "Solicitar foto o evidencia",
+      "Clasificar tipo de reporte",
+      "Crear folio",
+      "Confirmar canal responsable",
+      "Enviar estatus posterior"
+    ]
+  },
+  "campos_recomendados_en_dashboard": [
+    "folio",
+    "fecha_creacion",
+    "tipo_caso",
+    "tramite_o_programa",
+    "dependencia_destino",
+    "nombre_ciudadano",
+    "telefono",
+    "direccion",
+    "colonia_comisaria",
+    "documentos_recibidos",
+    "estatus",
+    "fecha_ultima_actualizacion",
+    "responsable",
+    "observaciones"
+  ],
+  "notas_para_produccion": [
+    "Validar costos finales y vigencias directamente en cada ficha oficial antes de usar en producción.",
+    "Algunos trámites visibles en snippets no mostraron todo el detalle público en el resultado; por eso ciertos campos quedaron como null o 'consultar ficha oficial'.",
+    "Para demo presencial, esta base ya permite respuestas realistas y flujos de pre-registro por WhatsApp."
+  ]
+}

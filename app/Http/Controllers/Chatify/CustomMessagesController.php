@@ -2,236 +2,144 @@
 
 namespace App\Http\Controllers\Chatify;
 
+use App\Services\AgentRouterService;
+use Chatify\Facades\ChatifyMessenger as Chatify;
+use Chatify\Http\Controllers\MessagesController as BaseMessagesController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Response;
-
-use App\Services\AIService;
-use App\Services\MovementService;
-use App\Services\ReminderService;
-
-use Chatify\Facades\ChatifyMessenger as Chatify;
-use Chatify\Http\Controllers\MessagesController as BaseMessagesController;
+use Illuminate\Support\Str;
 
 class CustomMessagesController extends BaseMessagesController
 {
+    public function __construct(
+        private readonly AgentRouterService $agentRouter
+    ) {
+    }
+
     public function send(Request $request)
     {
         $error = (object) [
             'status' => 0,
-            'message' => null
+            'message' => null,
         ];
 
-        $attachment = null;
-        $attachment_title = null;
+        $messageData = null;
 
-        // =========================
-        // HANDLE ATTACHMENTS
-        // =========================
-        if ($request->hasFile('file')) {
+        [$attachment, $attachmentTitle, $error] = $this->processAttachment($request, $error);
 
-            $allowed_images = Chatify::getAllowedImages();
-            $allowed_files = Chatify::getAllowedFiles();
-            $allowed = array_merge($allowed_images, $allowed_files);
-
-            $file = $request->file('file');
-
-            if ($file->getSize() < Chatify::getMaxUploadSize()) {
-
-                if (in_array(strtolower($file->extension()), $allowed)) {
-
-                    $attachment_title = $file->getClientOriginalName();
-                    $attachment = \Str::uuid() . "." . $file->extension();
-
-                    $file->storeAs(
-                        config('chatify.attachments.folder'),
-                        $attachment,
-                        config('chatify.storage_disk_name')
-                    );
-
-                } else {
-                    $error->status = 1;
-                    $error->message = "File extension not allowed!";
-                }
-
-            } else {
-                $error->status = 1;
-                $error->message = "File size too large!";
-            }
-        }
-
-        // =========================
-        // IF NO ERRORS → PROCESS MESSAGE
-        // =========================
         if (!$error->status) {
+            $receiverId = (int) $request['id'];
+            $senderId = (int) Auth::id();
 
-            // 🔹 Guardar mensaje del usuario
             $message = Chatify::newMessage([
-                'from_id' => Auth::id(),
-                'to_id' => $request['id'],
-                'body' => htmlentities(trim($request['message']), ENT_QUOTES, 'UTF-8'),
+                'from_id' => $senderId,
+                'to_id' => $receiverId,
+                'body' => htmlentities(trim((string) $request['message']), ENT_QUOTES, 'UTF-8'),
                 'attachment' => $attachment ? json_encode((object) [
                     'new_name' => $attachment,
-                    'old_name' => htmlentities(trim($attachment_title), ENT_QUOTES, 'UTF-8'),
+                    'old_name' => htmlentities(trim((string) $attachmentTitle), ENT_QUOTES, 'UTF-8'),
                 ]) : null,
             ]);
 
             $messageData = Chatify::parseMessage($message);
 
-            if (Auth::id() != $request['id']) {
+            if ($senderId !== $receiverId) {
                 Chatify::push(
-                    "private-chatify." . $request['id'],
+                    "private-chatify.{$receiverId}",
                     'messaging',
                     [
-                        'from_id' => Auth::id(),
-                        'to_id' => $request['id'],
-                        'message' => Chatify::messageCard($messageData, true)
+                        'from_id' => $senderId,
+                        'to_id' => $receiverId,
+                        'message' => Chatify::messageCard($messageData, true),
                     ]
                 );
             }
 
-            // =========================
-            // IF TALKING TO BOT (ID = 2)
-            // =========================
-            if ($request->id == 2) {
+            $botReply = $this->agentRouter->resolveReply(
+                receiverId: $receiverId,
+                senderId: $senderId,
+                message: (string) $request['message'],
+            );
 
-                $aiService = new AIService();
-                $movementService = new MovementService();
-                $reminderService = new ReminderService();
-
-                $data = $aiService->classify($request->message);
-
-                    if (!isset($data['success']) || !$data['success']) {
-                        $botReply = $aiService->chat($request->message);
-                    } 
-                    elseif ($data['intent'] === 'unknown') {
-                        $botReply = $aiService->chat($request->message);
-                    }else {
-
-                    switch ($data['intent']) {
-
-                        case 'income':
-                        case 'expense':
-                            $botReply = $movementService->create(Auth::id(), $data);
-                            break;
-
-                        case 'balance_query':
-                            $balance = $movementService->getBalance(Auth::id());
-                            $botReply = "💰 Tu saldo actual es {$balance}";
-                            break;
-
-                        case 'reminder_create':
-                            $botReply = $reminderService->create(Auth::id(), $data);
-                            break;
-
-                        case 'reminder_list':
-                            $botReply = $reminderService->list(Auth::id());
-                            break;
-
-                        case 'movement_summary':
-                            $botReply = $movementService->getSummary(Auth::id(), $data);
-                            break;
-
-                        case 'movement_list':
-                            $botReply = $movementService->list(Auth::id(), $data);
-                            break;
-
-
-                        default:
-                            $botReply = json_encode(value: $data);
-                    }
-                }
-                
-
-                // 🔹 Guardar mensaje del BOT
-                $botMessage = Chatify::newMessage([
-                    'from_id' => 2,
-                    'to_id' => Auth::id(),
-                    'body' => htmlentities(trim($botReply), ENT_QUOTES, 'UTF-8'),
-                    'attachment' => null,
-                ]);
-
-                $botMessageData = Chatify::parseMessage($botMessage);
-
-                Chatify::push(
-                    "private-chatify." . Auth::id(),
-                    'messaging',
-                    [
-                        'from_id' => 2,
-                        'to_id' => Auth::id(),
-                        'message' => Chatify::messageCard($botMessageData, true)
-                    ]
-                );
+            if ($botReply !== null) {
+                $this->storeAndPushAgentReply($receiverId, $senderId, $botReply);
             }
-
-            // =========================
-            // IF TALKING TO REAL ESTATE AGENT (ID = 6)
-            // =========================
-            if ($request->id == 6) {
-
-                $aiService = new AIService();
-
-                $botReply = $aiService->realEstateAgent($request->message);
-
-                $botMessage = Chatify::newMessage([
-                    'from_id' => 6,
-                    'to_id' => Auth::id(),
-                    'body' => htmlentities(trim($botReply), ENT_QUOTES, 'UTF-8'),
-                    'attachment' => null,
-                ]);
-
-                $botMessageData = Chatify::parseMessage($botMessage);
-
-                Chatify::push(
-                    "private-chatify." . Auth::id(),
-                    'messaging',
-                    [
-                        'from_id' => 6,
-                        'to_id' => Auth::id(),
-                        'message' => Chatify::messageCard($botMessageData, true)
-                    ]
-                );
-            }
-
-            // =========================
-            // IF TALKING TO INTELLIGENT AGENT (ID = 7)
-            // =========================
-            if ($request->id == 7) {
-
-                $aiService = new AIService();
-
-                $botReply = $aiService->intelligentAgent($request->message);
-
-                $botMessage = Chatify::newMessage([
-                    'from_id' => 7,
-                    'to_id' => Auth::id(),
-                    'body' => htmlentities(trim($botReply), ENT_QUOTES, 'UTF-8'),
-                    'attachment' => null,
-                ]);
-
-                $botMessageData = Chatify::parseMessage($botMessage);
-
-                Chatify::push(
-                    "private-chatify." . Auth::id(),
-                    'messaging',
-                    [
-                        'from_id' => 7,
-                        'to_id' => Auth::id(),
-                        'message' => Chatify::messageCard($botMessageData, true)
-                    ]
-                );
-            }
-
-
-
-
         }
 
         return Response::json([
             'status' => 200,
             'error' => $error,
-            'message' => Chatify::messageCard(@$messageData),
+            'message' => $messageData ? Chatify::messageCard($messageData) : '',
             'tempID' => $request['temporaryMsgId'],
         ]);
     }
+
+    private function processAttachment(Request $request, object $error): array
+    {
+        $attachment = null;
+        $attachmentTitle = null;
+
+        if (!$request->hasFile('file')) {
+            return [$attachment, $attachmentTitle, $error];
+        }
+
+        $allowedImages = Chatify::getAllowedImages();
+        $allowedFiles = Chatify::getAllowedFiles();
+        $allowed = array_merge($allowedImages, $allowedFiles);
+
+        $file = $request->file('file');
+
+        if ($file->getSize() >= Chatify::getMaxUploadSize()) {
+            $error->status = 1;
+            $error->message = 'File size too large!';
+            return [$attachment, $attachmentTitle, $error];
+        }
+
+        if (!in_array(strtolower($file->extension()), $allowed, true)) {
+            $error->status = 1;
+            $error->message = 'File extension not allowed!';
+            return [$attachment, $attachmentTitle, $error];
+        }
+
+        $attachmentTitle = $file->getClientOriginalName();
+        $attachment = Str::uuid() . '.' . $file->extension();
+
+        $file->storeAs(
+            config('chatify.attachments.folder'),
+            $attachment,
+            config('chatify.storage_disk_name')
+        );
+
+        return [$attachment, $attachmentTitle, $error];
+    }
+
+    private function storeAndPushAgentReply(int $agentUserId, int $userId, string $reply): void
+    {
+        $replyText = trim($reply);
+
+        if ($replyText === '') {
+            $replyText = 'No pude generar una respuesta en este momento.';
+        }
+
+        $botMessage = Chatify::newMessage([
+            'from_id' => $agentUserId,
+            'to_id' => $userId,
+            'body' => htmlentities($replyText, ENT_QUOTES, 'UTF-8'),
+            'attachment' => null,
+        ]);
+
+        $botMessageData = Chatify::parseMessage($botMessage);
+
+        Chatify::push(
+            "private-chatify.{$userId}",
+            'messaging',
+            [
+                'from_id' => $agentUserId,
+                'to_id' => $userId,
+                'message' => Chatify::messageCard($botMessageData, true),
+            ]
+        );
+    }
 }
+

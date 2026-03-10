@@ -8,11 +8,15 @@ class ReminderService
 {
     public function create(int $userId, array $data): string
     {
-        $date = $data['data']['date'] ?? now()->toDateString();
+        $date = $data['data']['reminder_date']
+            ?? $data['data']['date']
+            ?? now()->toDateString();
+
+        $description = $data['data']['description'] ?? 'Recordatorio';
 
         Reminder::create([
             'user_id' => $userId,
-            'description' => $data['data']['description'],
+            'description' => $description,
             'amount' => $data['data']['amount'] ?? null,
             'remind_at' => $date,
         ]);
