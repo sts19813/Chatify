@@ -14,6 +14,7 @@ class ExampleTest extends TestCase
     {
         $response = $this->get('/');
 
-        $response->assertRedirect('/chatify');
+        $response->assertOk();
+        $response->assertSee('Elige con que bot o IA quieres chatear');
     }
 }

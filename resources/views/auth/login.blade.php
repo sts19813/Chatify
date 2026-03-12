@@ -34,18 +34,21 @@
         </div>
 
         <div class="flex items-center justify-between mt-4">
-
-            {{-- Botón Registrarse --}}
-            @if (Route::has('register'))
-                <a href="{{ route('register') }}"
-                    class="underline text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-800">
-                    {{ __('Create account') }}
+            <div class="flex items-center gap-3">
+                <a href="{{ route('chat.guest') }}"
+                    class="underline text-sm text-sky-700 hover:text-sky-900 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 dark:text-sky-400 dark:hover:text-sky-200 dark:focus:ring-offset-gray-800">
+                    Chatear como invitado
                 </a>
-            @endif
+
+                @if (Route::has('register'))
+                    <a href="{{ route('register') }}"
+                        class="underline text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-800">
+                        {{ __('Create account') }}
+                    </a>
+                @endif
+            </div>
 
             <div class="flex items-center">
-
-                {{-- Forgot password --}}
                 @if (Route::has('password.request'))
                     <a class="underline text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-800 me-3"
                         href="{{ route('password.request') }}">
@@ -53,11 +56,9 @@
                     </a>
                 @endif
 
-                {{-- Login button --}}
                 <x-primary-button>
                     {{ __('Log in') }}
                 </x-primary-button>
-
             </div>
         </div>
 
