@@ -97,6 +97,14 @@ class AgentRouterService
             settings: $agent['settings'] ?? [],
         );
 
+        $resourceIntent = $context['resource_intent'] ?? null;
+        $priceIntent = (bool) ($context['price_intent'] ?? false);
+
+        // Use deterministic response for pricing/documents to guarantee direct links and values.
+        if ($resourceIntent !== null || $priceIntent) {
+            return $this->realEstateKnowledgeService->buildFallbackAnswer($message, $context);
+        }
+
         if (!$this->aiService->isConfigured()) {
             return $this->realEstateKnowledgeService->buildFallbackAnswer($message, $context);
         }

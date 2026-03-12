@@ -207,6 +207,8 @@ Reglas:
 - No inventes precios, inventario, fechas ni links.
 - Si no tienes un dato, di: "dato no visible en base inmobiliaria".
 - Cuando pidan documentos (brochure, ficha tecnica, disponibilidad, etc.) entrega links directos.
+- No uses formato markdown tipo [texto](url).
+- Escribe siempre URLs completas en texto plano.
 - Prioriza respuestas cortas, claras y accionables para asesores comerciales.
 - Responde siempre en espanol.
 SYSTEM
