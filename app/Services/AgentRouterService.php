@@ -12,6 +12,7 @@ class AgentRouterService
         private readonly MovementService $movementService,
         private readonly ReminderService $reminderService,
         private readonly MunicipalKnowledgeService $municipalKnowledgeService,
+        private readonly RealEstateKnowledgeService $realEstateKnowledgeService,
     ) {
     }
 
@@ -26,7 +27,7 @@ class AgentRouterService
         try {
             return match ($agent['agent_type']) {
                 'finance' => $this->replyFromFinanceAgent($senderId, $message),
-                'real_estate' => $this->aiService->realEstateAgent($message),
+                'real_estate' => $this->replyFromRealEstateAgent($message, $agent),
                 'municipal' => $this->replyFromMunicipalAgent($message, $agent),
                 'intelligent' => $this->aiService->intelligentAgent($message),
                 default => $this->aiService->intelligentAgent($message),
@@ -87,5 +88,25 @@ class AgentRouterService
 
         return $response;
     }
-}
 
+    private function replyFromRealEstateAgent(string $message, array $agent): string
+    {
+        $context = $this->realEstateKnowledgeService->buildContext(
+            message: $message,
+            datasetPath: $agent['dataset_path'] ?? null,
+            settings: $agent['settings'] ?? [],
+        );
+
+        if (!$this->aiService->isConfigured()) {
+            return $this->realEstateKnowledgeService->buildFallbackAnswer($message, $context);
+        }
+
+        $response = $this->aiService->realEstateAgentWithContext($message, $context);
+
+        if (trim($response) === '') {
+            return $this->realEstateKnowledgeService->buildFallbackAnswer($message, $context);
+        }
+
+        return $response;
+    }
+}

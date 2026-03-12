@@ -21,7 +21,7 @@ class RegisterAgentCommand extends Command
         {email : Email del usuario agente}
         {type=municipal : Tipo de agente [municipal|finance|real_estate|intelligent]}
         {--key= : Clave unica del agente}
-        {--dataset= : Ruta del dataset JSON (municipal)}
+        {--dataset= : Ruta del dataset JSON (municipal o real_estate)}
         {--password= : Password inicial del usuario}
         {--enabled=1 : 1 habilitado, 0 deshabilitado}
         {--force-password : Sobrescribe password de usuario existente}';
@@ -66,9 +66,12 @@ class RegisterAgentCommand extends Command
             datasetOption: $this->option('dataset')
         );
 
-        if ($type === 'municipal' && (!is_file($datasetPath) || !is_readable($datasetPath))) {
-            $this->error("No se encontro dataset municipal en: {$datasetPath}");
-            return self::FAILURE;
+        if (in_array($type, ['municipal', 'real_estate'], true)) {
+            if (!$datasetPath || !is_file($datasetPath) || !is_readable($datasetPath)) {
+                $label = $type === 'municipal' ? 'municipal' : 'inmobiliario';
+                $this->error("No se encontro dataset {$label} en: {$datasetPath}");
+                return self::FAILURE;
+            }
         }
 
         $user = User::query()->where('email', $email)->first();
@@ -109,13 +112,19 @@ class RegisterAgentCommand extends Command
                 'max_sources_context' => (int) config('agents.municipal.max_sources_context', 6),
                 'max_requirements_per_record' => (int) config('agents.municipal.max_requirements_per_record', 8),
             ];
+        } elseif ($type === 'real_estate') {
+            $settings = [
+                'max_projects_context' => (int) config('agents.real_estate.max_projects_context', 3),
+                'max_resources_context' => (int) config('agents.real_estate.max_resources_context', 8),
+                'max_features_context' => (int) config('agents.real_estate.max_features_context', 10),
+            ];
         }
 
         $agent = AIAgent::query()->firstOrNew(['user_id' => $user->id]);
         $agent->agent_key = $agentKey;
         $agent->agent_type = $type;
         $agent->enabled = $enabled;
-        $agent->dataset_path = $type === 'municipal'
+        $agent->dataset_path = in_array($type, ['municipal', 'real_estate'], true)
             ? $this->toProjectRelativePath($datasetPath)
             : null;
         $agent->settings = $settings;
@@ -140,11 +149,15 @@ class RegisterAgentCommand extends Command
 
     private function resolveDatasetPath(string $type, ?string $datasetOption): ?string
     {
-        if ($type !== 'municipal') {
+        if (!in_array($type, ['municipal', 'real_estate'], true)) {
             return null;
         }
 
-        $rawPath = $datasetOption ?: config('agents.municipal.default_dataset_path', 'storage/progreso.json');
+        $defaultPath = $type === 'municipal'
+            ? config('agents.municipal.default_dataset_path', 'storage/progreso.json')
+            : config('agents.real_estate.default_dataset_path', 'storage/kiro_real_estate.json');
+
+        $rawPath = $datasetOption ?: $defaultPath;
 
         if ($rawPath === null || $rawPath === '') {
             return null;
@@ -179,4 +192,3 @@ class RegisterAgentCommand extends Command
         return Str::startsWith($path, ['/', '\\']) || (bool) preg_match('/^[A-Za-z]:[\/\\\\]/', $path);
     }
 }
-

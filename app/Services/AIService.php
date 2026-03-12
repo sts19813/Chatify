@@ -184,6 +184,44 @@ SYSTEM
         return $content ?: 'Hubo un problema procesando tu solicitud.';
     }
 
+    public function realEstateAgentWithContext(string $message, array $context): string
+    {
+        $contextJson = json_encode(
+            $context,
+            JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT
+        );
+
+        if (!$contextJson) {
+            $contextJson = '{}';
+        }
+
+        $content = $this->sendChatCompletion(
+            messages: [
+                [
+                    'role' => 'system',
+                    'content' => <<<SYSTEM
+Eres KIRO, un asistente inmobiliario para asesores.
+
+Reglas:
+- Responde solo con informacion del CONTEXTO INMOBILIARIO entregado.
+- No inventes precios, inventario, fechas ni links.
+- Si no tienes un dato, di: "dato no visible en base inmobiliaria".
+- Cuando pidan documentos (brochure, ficha tecnica, disponibilidad, etc.) entrega links directos.
+- Prioriza respuestas cortas, claras y accionables para asesores comerciales.
+- Responde siempre en espanol.
+SYSTEM
+                ],
+                [
+                    'role' => 'user',
+                    'content' => "PREGUNTA DEL ASESOR:\n{$message}\n\nCONTEXTO INMOBILIARIO:\n{$contextJson}",
+                ],
+            ],
+            temperature: 0.2
+        );
+
+        return $content ?: '';
+    }
+
     public function intelligentAgent(string $message): string
     {
         $content = $this->sendChatCompletion(
@@ -308,4 +346,3 @@ SYSTEM
         ];
     }
 }
-

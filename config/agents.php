@@ -43,5 +43,16 @@ return [
         'max_sources_context' => 6,
         'max_requirements_per_record' => 8,
     ],
-];
 
+    /*
+    |--------------------------------------------------------------------------
+    | Real Estate Agent Defaults
+    |--------------------------------------------------------------------------
+    */
+    'real_estate' => [
+        'default_dataset_path' => 'storage/kiro_real_estate.json',
+        'max_projects_context' => 3,
+        'max_resources_context' => 8,
+        'max_features_context' => 10,
+    ],
+];

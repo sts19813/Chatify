@@ -1,0 +1,326 @@
+{
+  "dataset_name": "KIRO Real Estate Knowledge Base",
+  "agent_key": "kiro",
+  "updated_at": "2026-03-12",
+  "notes": [
+    "Completa source_url con links directos de Google Drive para brochure, disponibilidad, ficha tecnica, etc.",
+    "Si el link es de Drive, el agente generara automaticamente URL de vista y descarga.",
+    "Puedes agregar content y keywords dentro de cada recurso para que KIRO responda con mas detalle."
+  ],
+  "sales_contact": {
+    "company": "Edifor",
+    "email": null,
+    "phone": null,
+    "whatsapp": null
+  },
+  "global_resources": [],
+  "projects": [
+    {
+      "project_key": "adia",
+      "name": "Adia",
+      "slug": "adia",
+      "aliases": ["adia merida"],
+      "website_url": "https://www.edifor.info/adia",
+      "status": "activo",
+      "summary": "Desarrollo residencial Edifor.",
+      "price_from_mxn": null,
+      "currency": "MXN",
+      "delivery_date": null,
+      "location": {
+        "city": "Merida",
+        "zone": null,
+        "address": null,
+        "maps_url": null
+      },
+      "payment_options": [],
+      "features": [],
+      "resources": [
+        {
+          "resource_type": "brochure",
+          "resource_label": "Brochure Adia",
+          "source_type": "url",
+          "source_url": "https://www.edifor.info/adia",
+          "notes": "Reemplazar por link de brochure en Drive cuando este disponible."
+        },
+        {
+          "resource_type": "pdv",
+          "resource_label": "PDV Adia",
+          "source_type": "url",
+          "source_url": "https://www.edifor.info/adia"
+        },
+        {
+          "resource_type": "availability",
+          "resource_label": "Disponibilidad Adia",
+          "source_type": "url",
+          "source_url": "https://www.edifor.info/adia"
+        },
+        {
+          "resource_type": "technical_sheet",
+          "resource_label": "Ficha tecnica Adia",
+          "source_type": "url",
+          "source_url": "https://www.edifor.info/adia"
+        },
+        {
+          "resource_type": "renders",
+          "resource_label": "Renders Adia",
+          "source_type": "url",
+          "source_url": "https://www.edifor.info/adia"
+        },
+        {
+          "resource_type": "videos",
+          "resource_label": "Videos Adia",
+          "source_type": "url",
+          "source_url": "https://www.edifor.info/adia"
+        },
+        {
+          "resource_type": "location",
+          "resource_label": "Ubicacion Adia",
+          "source_type": "url",
+          "source_url": "https://www.edifor.info/adia"
+        },
+        {
+          "resource_type": "descriptive_memory",
+          "resource_label": "Memoria descriptiva Adia",
+          "source_type": "url",
+          "source_url": "https://www.edifor.info/adia"
+        }
+      ]
+    },
+    {
+      "project_key": "okte",
+      "name": "Okte",
+      "slug": "okte",
+      "aliases": ["okte merida", "townhouses okte"],
+      "website_url": "https://www.edifor.info/okte",
+      "status": "activo",
+      "summary": "8 townhouses de 2 recamaras en la zona norte de Merida.",
+      "price_from_mxn": 3050000,
+      "currency": "MXN",
+      "delivery_date": "Diciembre 2025",
+      "location": {
+        "city": "Merida",
+        "zone": "Norte",
+        "address": null,
+        "maps_url": null
+      },
+      "payment_options": [
+        {
+          "label": "Apartado",
+          "value_mxn": 20000,
+          "percentage": null,
+          "notes": null
+        },
+        {
+          "label": "Enganche",
+          "value_mxn": null,
+          "percentage": 20,
+          "notes": null
+        },
+        {
+          "label": "Bancario y recurso propio",
+          "value_mxn": null,
+          "percentage": null,
+          "notes": null
+        }
+      ],
+      "features": [
+        "131 m2",
+        "2.5 banos",
+        "Cocina con barra desayunadora de granito",
+        "Sala comedor",
+        "Area de lavado opcional",
+        "Garage techado para 2 autos"
+      ],
+      "resources": [
+        {
+          "resource_type": "brochure",
+          "resource_label": "Brochure Okte",
+          "source_type": "url",
+          "source_url": "https://drive.google.com/file/d/1dGl22QFTh1nOdUg1jppp0NpxTg7W8Co3/view?usp=drive_link"
+        },
+        {
+          "resource_type": "pdv",
+          "resource_label": "PDV Okte",
+          "source_type": "url",
+          "source_url": "https://drive.google.com/drive/folders/17x7GP_d8WOt6ryBH4L6viYmVNPZ9LFGW?usp=drive_link"
+        },
+        {
+          "resource_type": "availability",
+          "resource_label": "Disponibilidad Okte",
+          "source_type": "url",
+          "source_url": "https://drive.google.com/file/d/1iVvS1NEtnzGo5i8j0TKjkQ5p3rsiJZtE/view?usp=drive_link"
+        },
+        {
+          "resource_type": "technical_sheet",
+          "resource_label": "Ficha tecnica Okte",
+          "source_type": "url",
+          "source_url": "https://drive.google.com/file/d/1VBLZcSYqFACJqoq-rtp3Ho9hJRiqZmYo/view?usp=drive_link"
+        },
+        {
+          "resource_type": "renders",
+          "resource_label": "Renders Okte",
+          "source_type": "url",
+          "source_url": "https://drive.google.com/drive/folders/1-6kpVzsNmGf6mwgUdQNKwXwZJwg28V9L"
+        },
+        {
+          "resource_type": "videos",
+          "resource_label": "Videos Okte",
+          "source_type": "url",
+          "source_url": "https://drive.google.com/drive/folders/1heEoZ5ZCYrrY9qJGmERvHq7ihrK7wJSN"
+        },
+        {
+          "resource_type": "location",
+          "resource_label": "Ubicacion Okte",
+          "source_type": "url",
+          "source_url": "https://drive.google.com/drive/folders/1FL-j6oaWEQUUnrYMQtoMn60Uhm3kCBaL"
+        },
+        {
+          "resource_type": "descriptive_memory",
+          "resource_label": "Memoria descriptiva Okte",
+          "source_type": "url",
+          "source_url": "https://drive.google.com/file/d/1TqrBWRDUz8y3AeslNKSRIkNrSMSUVxcj/view?usp=drive_link"
+        }
+      ]
+    },
+    {
+      "project_key": "thula",
+      "name": "Thula",
+      "slug": "copia-de-thula",
+      "aliases": ["thula", "thula merida"],
+      "website_url": "https://www.edifor.info/copia-de-thula",
+      "status": "activo",
+      "summary": "Desarrollo residencial Edifor.",
+      "price_from_mxn": null,
+      "currency": "MXN",
+      "delivery_date": null,
+      "location": {
+        "city": "Merida",
+        "zone": null,
+        "address": null,
+        "maps_url": null
+      },
+      "payment_options": [],
+      "features": [],
+      "resources": [
+        {
+          "resource_type": "brochure",
+          "resource_label": "Brochure Thula",
+          "source_type": "url",
+          "source_url": "https://www.edifor.info/copia-de-thula"
+        },
+        {
+          "resource_type": "pdv",
+          "resource_label": "PDV Thula",
+          "source_type": "url",
+          "source_url": "https://www.edifor.info/copia-de-thula"
+        },
+        {
+          "resource_type": "availability",
+          "resource_label": "Disponibilidad Thula",
+          "source_type": "url",
+          "source_url": "https://www.edifor.info/copia-de-thula"
+        },
+        {
+          "resource_type": "technical_sheet",
+          "resource_label": "Ficha tecnica Thula",
+          "source_type": "url",
+          "source_url": "https://www.edifor.info/copia-de-thula"
+        },
+        {
+          "resource_type": "renders",
+          "resource_label": "Renders Thula",
+          "source_type": "url",
+          "source_url": "https://www.edifor.info/copia-de-thula"
+        },
+        {
+          "resource_type": "videos",
+          "resource_label": "Videos Thula",
+          "source_type": "url",
+          "source_url": "https://www.edifor.info/copia-de-thula"
+        },
+        {
+          "resource_type": "location",
+          "resource_label": "Ubicacion Thula",
+          "source_type": "url",
+          "source_url": "https://www.edifor.info/copia-de-thula"
+        },
+        {
+          "resource_type": "descriptive_memory",
+          "resource_label": "Memoria descriptiva Thula",
+          "source_type": "url",
+          "source_url": "https://www.edifor.info/copia-de-thula"
+        }
+      ]
+    },
+    {
+      "project_key": "mystika",
+      "name": "Mystika",
+      "slug": "mystika",
+      "aliases": ["mystika merida"],
+      "website_url": "https://www.edifor.info/mystika",
+      "status": "activo",
+      "summary": "Desarrollo residencial Edifor.",
+      "price_from_mxn": null,
+      "currency": "MXN",
+      "delivery_date": null,
+      "location": {
+        "city": "Merida",
+        "zone": null,
+        "address": null,
+        "maps_url": null
+      },
+      "payment_options": [],
+      "features": [],
+      "resources": [
+        {
+          "resource_type": "brochure",
+          "resource_label": "Brochure Mystika",
+          "source_type": "url",
+          "source_url": "https://www.edifor.info/mystika"
+        },
+        {
+          "resource_type": "pdv",
+          "resource_label": "PDV Mystika",
+          "source_type": "url",
+          "source_url": "https://www.edifor.info/mystika"
+        },
+        {
+          "resource_type": "availability",
+          "resource_label": "Disponibilidad Mystika",
+          "source_type": "url",
+          "source_url": "https://www.edifor.info/mystika"
+        },
+        {
+          "resource_type": "technical_sheet",
+          "resource_label": "Ficha tecnica Mystika",
+          "source_type": "url",
+          "source_url": "https://www.edifor.info/mystika"
+        },
+        {
+          "resource_type": "renders",
+          "resource_label": "Renders Mystika",
+          "source_type": "url",
+          "source_url": "https://www.edifor.info/mystika"
+        },
+        {
+          "resource_type": "videos",
+          "resource_label": "Videos Mystika",
+          "source_type": "url",
+          "source_url": "https://www.edifor.info/mystika"
+        },
+        {
+          "resource_type": "location",
+          "resource_label": "Ubicacion Mystika",
+          "source_type": "url",
+          "source_url": "https://www.edifor.info/mystika"
+        },
+        {
+          "resource_type": "descriptive_memory",
+          "resource_label": "Memoria descriptiva Mystika",
+          "source_type": "url",
+          "source_url": "https://www.edifor.info/mystika"
+        }
+      ]
+    }
+  ]
+}
