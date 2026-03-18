@@ -13,6 +13,12 @@ use Illuminate\Support\Str;
 class KiroBusinessDirectoryService
 {
     private static ?array $sourceCache = null;
+    private array $routeCache = [];
+
+    public function __construct(
+        private readonly AIService $aiService
+    ) {
+    }
 
     public function buildContext(int $userId, int $agentUserId, string $message, array $settings = []): array
     {
@@ -28,12 +34,16 @@ class KiroBusinessDirectoryService
         }
 
         $maxHistory = max(6, (int) ($settings['max_history_context'] ?? config('agents.kiro.max_history_context', 20)));
-        $maxCandidates = max(30, (int) ($settings['max_candidates_context'] ?? config('agents.kiro.max_candidates_context', 120)));
+        $maxCandidates = max(30, (int) ($settings['max_candidates_context'] ?? config('agents.kiro.max_candidates_context', 350)));
         $maxResults = min(5, max(3, (int) ($settings['max_results'] ?? config('agents.kiro.max_results', 3))));
         $nearKmDefault = (float) ($settings['near_km_default'] ?? config('agents.kiro.near_km_default', 8));
         $nearKmVeryClose = (float) ($settings['near_km_very_close'] ?? config('agents.kiro.near_km_very_close', 3));
         $weatherEnabled = (bool) ($settings['weather_enabled'] ?? config('agents.kiro.weather_enabled', true));
+        $plannerEnabled = (bool) ($settings['planner_enabled'] ?? config('agents.kiro.planner_enabled', true));
+        $plannerModel = trim((string) ($settings['planner_model'] ?? config('agents.kiro.planner_model', config('agents.kiro.model', config('services.openai.model', 'gpt-4o-mini')))));
         $geocodeTimeout = max(3, (int) ($settings['geocode_timeout_seconds'] ?? config('agents.kiro.geocode_timeout_seconds', 8)));
+        $routeTimeout = max(3, (int) ($settings['route_timeout_seconds'] ?? config('agents.kiro.route_timeout_seconds', 8)));
+        $routeMaxResults = min(5, max(1, (int) ($settings['route_max_results'] ?? config('agents.kiro.route_max_results', 3))));
         $weatherTimeout = max(3, (int) ($settings['weather_timeout_seconds'] ?? config('agents.kiro.weather_timeout_seconds', 8)));
 
         $userContext = $this->resolveUserContext($userId);
@@ -59,7 +69,52 @@ class KiroBusinessDirectoryService
 
         $chatHistory = $this->loadChatHistory($userId, $agentUserId, $maxHistory);
         $chatSummary = $this->buildInternalSummary($chatHistory, (string) ($userContext?->chat_summary ?? ''));
+
+        $modelPlan = $plannerEnabled
+            ? $this->resolveModelPlan(
+                $message,
+                $chatSummary,
+                $userLocation,
+                Arr::wrap($userContext?->interest_patterns ?? []),
+                $plannerModel !== '' ? $plannerModel : null
+            )
+            : [];
+
+        $intent = $this->resolveIntent($intent, (string) ($modelPlan['intent'] ?? ''));
+        $distanceMode = $this->resolveDistanceMode($distanceMode, (string) ($modelPlan['distance_mode'] ?? ''));
+
+        $extraTokens = $this->extractSearchTokens($this->normalizeText((string) ($modelPlan['business_query'] ?? '')));
+        $plannerKeywords = array_values(array_filter(array_map(
+            fn ($keyword): string => $this->normalizeText((string) $keyword),
+            Arr::wrap($modelPlan['keywords'] ?? [])
+        )));
+        $tokens = $this->mergeTokens($tokens, $extraTokens, $plannerKeywords);
+
+        if ($locationFromMessage === null && !empty($modelPlan['location_hint'])) {
+            $userLocation = Str::limit(trim((string) $modelPlan['location_hint']), 120, '');
+            [$userLatitude, $userLongitude] = $this->resolveUserCoordinates(
+                $userLocation,
+                $userLatitude,
+                $userLongitude,
+                true,
+                $geocodeTimeout
+            );
+        }
+
+        $budgetIntent = $this->mergeBudgetIntent($budgetIntent, $modelPlan);
+        $locationTokens = $this->extractLocationTokens((string) $userLocation);
+        if (!empty($locationTokens)) {
+            $tokens = array_values(array_filter(
+                $tokens,
+                static fn (string $token): bool => !in_array($token, $locationTokens, true)
+            ));
+        }
+
+        $responseStyleSeed = $this->buildResponseStyleSeed($message, $chatSummary, (string) ($modelPlan['response_style'] ?? ''));
+        $clarifyingQuestion = $this->resolveClarifyingQuestion($modelPlan, $intent, $tokens);
         $weatherContext = $weatherEnabled ? $this->resolveWeatherContext($userLatitude, $userLongitude, $normalizedMessage, $weatherTimeout) : null;
+        $needsRouteContext = $this->needsRouteContext($intent, $normalizedMessage);
+        $needsHoursContext = $this->needsHoursContext($intent, $normalizedMessage);
 
         $matchedBusinesses = [];
         $lastResultIds = array_values(array_filter(array_map(static fn ($id): int => (int) $id, Arr::wrap($userContext?->last_result_ids ?? []))));
@@ -70,8 +125,9 @@ class KiroBusinessDirectoryService
             $directContactMode = !empty($matchedBusinesses);
         }
 
-        if (empty($matchedBusinesses)) {
-            $locationTokens = $this->extractLocationTokens((string) $userLocation);
+        if ($intent === 'smalltalk') {
+            $matchedBusinesses = [];
+        } elseif (empty($matchedBusinesses)) {
             $distanceSensitiveSearch = in_array($distanceMode, ['very_near', 'near', 'far'], true) && $userLatitude !== null && $userLongitude !== null;
             $candidates = $this->collectCandidates(
                 $sourceTable,
@@ -103,6 +159,17 @@ class KiroBusinessDirectoryService
         }
 
         $mappedBusinesses = array_map(fn (array $row): array => $this->toBusinessPayload($row, $sourceType), $matchedBusinesses);
+        $mappedBusinesses = $this->enrichBusinessHours($mappedBusinesses);
+        if ($needsRouteContext) {
+            $mappedBusinesses = $this->enrichBusinessRoutes(
+                $mappedBusinesses,
+                $userLatitude,
+                $userLongitude,
+                $routeTimeout,
+                $routeMaxResults
+            );
+        }
+
         $interestPatterns = $this->updateInterestPatterns(Arr::wrap($userContext?->interest_patterns ?? []), $tokens);
         $ambiguous = $this->isAmbiguous($intent, $tokens, $mappedBusinesses);
 
@@ -122,6 +189,10 @@ class KiroBusinessDirectoryService
             );
         }
 
+        if ($clarifyingQuestion !== null && empty($mappedBusinesses) && $intent !== 'smalltalk') {
+            $ambiguous = true;
+        }
+
         return [
             'source_table' => $sourceTable,
             'source_type' => $sourceType,
@@ -137,8 +208,14 @@ class KiroBusinessDirectoryService
             'price_preference' => $pricePreference,
             'budget_intent' => $budgetIntent,
             'interest_patterns' => $interestPatterns,
+            'model_plan' => $modelPlan,
+            'model_style' => $modelPlan['response_style'] ?? null,
+            'response_style_seed' => $responseStyleSeed,
+            'clarifying_question' => $clarifyingQuestion,
             'weather' => $weatherContext,
             'ambiguous' => $ambiguous,
+            'needs_route_context' => $needsRouteContext,
+            'needs_hours_context' => $needsHoursContext,
             'direct_contact_mode' => $directContactMode,
             'matched_businesses' => $mappedBusinesses,
         ];
@@ -154,6 +231,23 @@ class KiroBusinessDirectoryService
         $businesses = Arr::wrap($context['matched_businesses'] ?? []);
         $location = trim((string) ($context['user_location'] ?? ''));
         $ambiguous = (bool) ($context['ambiguous'] ?? false);
+        $seed = (int) ($context['response_style_seed'] ?? 0);
+        $clarifyingQuestion = trim((string) ($context['clarifying_question'] ?? ''));
+
+        if ($intent === 'smalltalk') {
+            $smalltalkReplies = [
+                'Todo bien. Si quieres, te ayudo a encontrar algo cerca por giro y zona.',
+                'Aqui ando para ayudarte. Dime que buscas y en que zona te mueves.',
+                'Con gusto. Si me dices giro, ubicacion y presupuesto te doy opciones utiles.',
+                'Listo para ayudarte. Te busco lugares cercanos segun lo que te guste.',
+            ];
+
+            return $smalltalkReplies[$seed % count($smalltalkReplies)];
+        }
+
+        if ($clarifyingQuestion !== '' && empty($businesses)) {
+            return $clarifyingQuestion;
+        }
 
         if ($ambiguous && empty($businesses)) {
             return 'Que tipo de negocio buscas y en que zona?';
@@ -171,6 +265,14 @@ class KiroBusinessDirectoryService
             return 'No encontre coincidencias exactas. Dime giro, zona y presupuesto aproximado.';
         }
 
+        $introTemplates = [
+            "Opciones que te convienen en {$location}:",
+            "Te propongo estos lugares" . ($location !== '' ? " cerca de {$location}:" : ':'),
+            'Esto fue lo mas relevante que encontre:',
+            'Te dejo resultados utiles para decidir rapido:',
+        ];
+        $intro = $introTemplates[$seed % count($introTemplates)];
+
         $lines = [];
         foreach (array_slice($businesses, 0, 5) as $index => $business) {
             $line = ($index + 1) . '. ' . ($business['nombre'] ?? 'Negocio');
@@ -181,10 +283,24 @@ class KiroBusinessDirectoryService
                 $line .= "\nDistancia aprox: " . $business['distance_km'] . ' km';
             }
 
+            if (!empty($business['route_duration_min'])) {
+                $line .= "\nTraslado estimado: " . $business['route_duration_min'] . ' min';
+            }
+
             if (!empty($business['price_from'])) {
                 $line .= "\nPrecio desde: $" . number_format((float) $business['price_from'], 2) . ' MXN';
             } elseif (!empty($business['budget_level'])) {
                 $line .= "\nNivel presupuesto: " . $business['budget_level'];
+            }
+
+            if (!empty($business['hours_summary'])) {
+                $line .= "\nHorario: " . $business['hours_summary'];
+            }
+
+            if (($business['open_now'] ?? null) === true) {
+                $line .= "\nEstado: Abierto ahora";
+            } elseif (($business['open_now'] ?? null) === false) {
+                $line .= "\nEstado: Cerrado";
             }
 
             if (!empty($business['telefono'])) {
@@ -198,7 +314,360 @@ class KiroBusinessDirectoryService
             $lines[] = $line;
         }
 
-        return implode("\n\n", $lines);
+        return $intro . "\n\n" . implode("\n\n", $lines);
+    }
+
+    private function resolveModelPlan(
+        string $message,
+        string $chatSummary,
+        ?string $userLocation,
+        array $interestPatterns,
+        ?string $plannerModel
+    ): array {
+        if (!$this->aiService->isConfigured()) {
+            return [];
+        }
+
+        $patternsCollection = collect($interestPatterns);
+        $interestSignals = $patternsCollection->keys()->contains(static fn ($key): bool => is_string($key))
+            ? $patternsCollection->keys()->take(8)->values()->all()
+            : $patternsCollection->take(8)->values()->all();
+
+        return $this->aiService->kiroSearchPlan(
+            message: $message,
+            context: [
+                'user_location' => $userLocation,
+                'chat_summary' => $chatSummary,
+                'interest_signals' => $interestSignals,
+            ],
+            model: $plannerModel
+        );
+    }
+
+    private function resolveIntent(string $detectedIntent, string $plannedIntent): string
+    {
+        $plannedIntent = strtolower(trim($plannedIntent));
+        $allowed = ['search', 'recommend', 'compare', 'locate', 'contact', 'route', 'hours', 'smalltalk'];
+
+        if (in_array($plannedIntent, $allowed, true)) {
+            return $plannedIntent;
+        }
+
+        return $detectedIntent;
+    }
+
+    private function resolveDistanceMode(string $detectedMode, string $plannedMode): string
+    {
+        $plannedMode = strtolower(trim($plannedMode));
+
+        if (in_array($plannedMode, ['none', 'near', 'very_near', 'far'], true)) {
+            return $plannedMode;
+        }
+
+        return $detectedMode;
+    }
+
+    private function mergeTokens(array ...$tokenSets): array
+    {
+        $merged = [];
+
+        foreach ($tokenSets as $tokenSet) {
+            foreach ($tokenSet as $token) {
+                $normalized = $this->normalizeText((string) $token);
+
+                if ($normalized === '') {
+                    continue;
+                }
+
+                $parts = preg_split('/[^a-z0-9]+/', $normalized) ?: [];
+                foreach ($parts as $part) {
+                    if (strlen($part) < 3) {
+                        continue;
+                    }
+
+                    $merged[] = $part;
+                }
+            }
+        }
+
+        return array_slice(array_values(array_unique($merged)), 0, 18);
+    }
+
+    private function mergeBudgetIntent(array $baseIntent, array $modelPlan): array
+    {
+        $baseIntent['level'] = $baseIntent['level'] ?? null;
+        $baseIntent['max_price'] = $baseIntent['max_price'] ?? null;
+
+        $plannedLevel = strtolower(trim((string) ($modelPlan['budget_level'] ?? '')));
+        if ($baseIntent['level'] === null && in_array($plannedLevel, ['barato', 'medio', 'premium'], true)) {
+            $baseIntent['level'] = $plannedLevel;
+        }
+
+        return $baseIntent;
+    }
+
+    private function resolveClarifyingQuestion(array $modelPlan, string $intent, array $tokens): ?string
+    {
+        $needsClarification = (bool) ($modelPlan['needs_clarification'] ?? false);
+        $candidateQuestion = trim((string) ($modelPlan['clarifying_question'] ?? ''));
+
+        if (!$needsClarification && !($intent !== 'smalltalk' && count($tokens) <= 1)) {
+            return null;
+        }
+
+        if ($candidateQuestion === '') {
+            $candidateQuestion = match ($intent) {
+                'route', 'locate' => 'Para darte una ruta exacta, en que zona estas ahora?',
+                'hours' => 'De que negocio quieres revisar horario?',
+                default => 'Que tipo de lugar buscas y en que zona?',
+            };
+        }
+
+        return Str::limit($candidateQuestion, 140, '');
+    }
+
+    private function buildResponseStyleSeed(string $message, string $chatSummary, string $modelStyle): int
+    {
+        $hashBase = $this->normalizeText($message)
+            . '|'
+            . $this->normalizeText(Str::limit($chatSummary, 140, ''))
+            . '|'
+            . $this->normalizeText($modelStyle);
+
+        return abs(crc32($hashBase)) % 4;
+    }
+
+    private function needsRouteContext(string $intent, string $normalizedMessage): bool
+    {
+        if (in_array($intent, ['route', 'locate'], true)) {
+            return true;
+        }
+
+        return $this->containsAny($normalizedMessage, [
+            'como llegar', 'ruta', 'trayecto', 'transito', 'trafico',
+            'cuanto tiempo', 'cuanto hago', 'minutos',
+        ]);
+    }
+
+    private function needsHoursContext(string $intent, string $normalizedMessage): bool
+    {
+        if ($intent === 'hours') {
+            return true;
+        }
+
+        return $this->containsAny($normalizedMessage, ['horario', 'abre', 'abren', 'cierra', 'cerrado', 'abierto']);
+    }
+
+    private function enrichBusinessHours(array $businesses): array
+    {
+        foreach ($businesses as &$business) {
+            [$openNow, $hoursSummary] = $this->deriveOpenStatusFromHours($business['hours'] ?? null);
+            $business['open_now'] = $openNow;
+            $business['hours_summary'] = $hoursSummary;
+        }
+
+        return $businesses;
+    }
+
+    private function deriveOpenStatusFromHours(?string $hours): array
+    {
+        $raw = trim((string) $hours);
+
+        if ($raw === '') {
+            return [null, null];
+        }
+
+        $normalized = $this->normalizeText($raw);
+
+        if ($this->containsAny($normalized, ['24 horas', '24/7', '24hrs'])) {
+            return [true, '24 horas'];
+        }
+
+        if ($this->containsAny($normalized, ['cerrado permanentemente', 'cerrado temporal', 'permanently closed'])) {
+            return [false, Str::limit($raw, 120, '')];
+        }
+
+        return [null, Str::limit($raw, 120, '')];
+    }
+
+    private function enrichBusinessRoutes(
+        array $businesses,
+        ?float $userLatitude,
+        ?float $userLongitude,
+        int $timeoutSeconds,
+        int $maxRoutes
+    ): array {
+        if ($userLatitude === null || $userLongitude === null || empty($businesses)) {
+            return $businesses;
+        }
+
+        [$trafficFactor, $trafficLevel] = $this->estimateTrafficProfile();
+        $processed = 0;
+        $geoAttempts = 0;
+
+        foreach ($businesses as &$business) {
+            if ($processed >= $maxRoutes) {
+                break;
+            }
+
+            $targetLat = $this->nullableFloat($business['latitude'] ?? null);
+            $targetLon = $this->nullableFloat($business['longitude'] ?? null);
+
+            if (($targetLat === null || $targetLon === null) && $geoAttempts < 4) {
+                $geoQuery = $this->buildBusinessGeoQueryFromPayload($business);
+                if ($geoQuery !== null) {
+                    $geoAttempts++;
+                    $geo = $this->resolveCoordinatesByQuery($geoQuery, true, $timeoutSeconds);
+                    if ($geo !== null) {
+                        $targetLat = (float) $geo['latitude'];
+                        $targetLon = (float) $geo['longitude'];
+                        $business['latitude'] = $targetLat;
+                        $business['longitude'] = $targetLon;
+                    }
+                }
+            }
+
+            if ($targetLat === null || $targetLon === null) {
+                continue;
+            }
+
+            $processed++;
+            $route = $this->resolveDrivingRoute($userLatitude, $userLongitude, $targetLat, $targetLon, $timeoutSeconds);
+
+            if ($route !== null) {
+                $business['route_distance_km'] = number_format((float) $route['distance_km'], 2, '.', '');
+                $business['route_duration_min'] = (int) ceil(((int) $route['duration_min']) * $trafficFactor);
+                $business['traffic_level'] = $trafficLevel;
+                $business['route_note'] = 'Tiempo estimado en auto';
+            } else {
+                $distanceKm = ($business['distance_km'] ?? null) !== null
+                    ? (float) $business['distance_km']
+                    : $this->haversineDistanceKm($userLatitude, $userLongitude, $targetLat, $targetLon);
+
+                $business['route_distance_km'] = number_format($distanceKm, 2, '.', '');
+                $business['route_duration_min'] = (int) max(3, ceil(($distanceKm / 26) * 60 * $trafficFactor));
+                $business['traffic_level'] = $trafficLevel;
+                $business['route_note'] = 'Tiempo aproximado por distancia';
+            }
+
+            if (!empty($business['google_maps_url'])) {
+                $business['directions_url'] = $business['google_maps_url'];
+            } else {
+                $business['directions_url'] = $this->buildDirectionsUrl($userLatitude, $userLongitude, $targetLat, $targetLon);
+            }
+        }
+
+        return $businesses;
+    }
+
+    private function buildBusinessGeoQueryFromPayload(array $business): ?string
+    {
+        $address = trim((string) ($business['direccion'] ?? ''));
+        $neighborhood = trim((string) ($business['neighborhood'] ?? ''));
+        $city = trim((string) ($business['city'] ?? ''));
+        $state = trim((string) ($business['state'] ?? ''));
+
+        if ($address !== '' && $city !== '' && $state !== '') {
+            return "{$address}, {$city}, {$state}, Mexico";
+        }
+
+        if ($neighborhood !== '' && $city !== '' && $state !== '') {
+            return "{$neighborhood}, {$city}, {$state}, Mexico";
+        }
+
+        return null;
+    }
+
+    private function estimateTrafficProfile(): array
+    {
+        $hour = (int) now()->setTimezone((string) config('app.timezone', 'America/Mexico_City'))->format('G');
+
+        if (in_array($hour, [7, 8, 9, 18, 19, 20], true)) {
+            return [1.25, 'alto'];
+        }
+
+        if ($hour >= 10 && $hour <= 16) {
+            return [1.1, 'medio'];
+        }
+
+        return [1.0, 'bajo'];
+    }
+
+    private function buildDirectionsUrl(float $fromLat, float $fromLon, float $toLat, float $toLon): string
+    {
+        return 'https://www.google.com/maps/dir/?api=1&origin='
+            . urlencode($fromLat . ',' . $fromLon)
+            . '&destination='
+            . urlencode($toLat . ',' . $toLon)
+            . '&travelmode=driving';
+    }
+
+    private function resolveDrivingRoute(
+        float $fromLat,
+        float $fromLon,
+        float $toLat,
+        float $toLon,
+        int $timeoutSeconds
+    ): ?array {
+        $cacheKey = implode(':', [
+            number_format($fromLat, 5, '.', ''),
+            number_format($fromLon, 5, '.', ''),
+            number_format($toLat, 5, '.', ''),
+            number_format($toLon, 5, '.', ''),
+        ]);
+
+        if (isset($this->routeCache[$cacheKey])) {
+            return $this->routeCache[$cacheKey];
+        }
+
+        $url = sprintf(
+            'https://router.project-osrm.org/route/v1/driving/%s,%s;%s,%s',
+            $fromLon,
+            $fromLat,
+            $toLon,
+            $toLat
+        );
+
+        try {
+            $response = Http::timeout(max(3, $timeoutSeconds))->get($url, [
+                'overview' => 'false',
+                'steps' => 'false',
+                'alternatives' => 'false',
+            ]);
+
+            if (!$response->successful()) {
+                $this->routeCache[$cacheKey] = null;
+                return null;
+            }
+
+            $route = data_get($response->json(), 'routes.0');
+            $distanceMeters = (float) data_get($route, 'distance', 0);
+            $durationSeconds = (float) data_get($route, 'duration', 0);
+
+            if ($distanceMeters <= 0 || $durationSeconds <= 0) {
+                $this->routeCache[$cacheKey] = null;
+                return null;
+            }
+
+            $distanceKm = $distanceMeters / 1000;
+            $directDistance = $this->haversineDistanceKm($fromLat, $fromLon, $toLat, $toLon);
+
+            if ($directDistance > 0.1 && $distanceKm > max(120.0, $directDistance * 6)) {
+                $this->routeCache[$cacheKey] = null;
+                return null;
+            }
+
+            $result = [
+                'distance_km' => $distanceKm,
+                'duration_min' => (int) ceil($durationSeconds / 60),
+            ];
+
+            $this->routeCache[$cacheKey] = $result;
+            return $result;
+        } catch (\Throwable) {
+            $this->routeCache[$cacheKey] = null;
+            return null;
+        }
     }
 
     private function resolveActiveSource(): array
@@ -445,6 +914,7 @@ class KiroBusinessDirectoryService
 
         foreach ($candidates as $candidate) {
             $score = 0;
+            $semanticMatches = 0;
 
             $name = $this->normalizeText((string) ($candidate['name'] ?? ''));
             $activity = $this->normalizeText((string) ($candidate['activity'] ?? ''));
@@ -458,20 +928,30 @@ class KiroBusinessDirectoryService
             ]));
 
             foreach ($tokens as $token) {
+                $matchedThisToken = false;
+
                 if (str_contains($name, $token)) {
                     $score += 7;
+                    $matchedThisToken = true;
                 }
 
                 if (str_contains($activity, $token)) {
                     $score += 6;
+                    $matchedThisToken = true;
                 }
 
                 if (str_contains($category, $token)) {
                     $score += 5;
+                    $matchedThisToken = true;
                 }
 
                 if (str_contains($searchable, $token)) {
                     $score += 3;
+                    $matchedThisToken = true;
+                }
+
+                if ($matchedThisToken) {
+                    $semanticMatches++;
                 }
             }
 
@@ -587,6 +1067,24 @@ class KiroBusinessDirectoryService
                 }
             }
 
+            if ($intent === 'route' || $intent === 'locate') {
+                if ($candidateLatitude !== null && $candidateLongitude !== null) {
+                    $score += 6;
+                }
+
+                if (!empty($candidate['google_maps_url'])) {
+                    $score += 3;
+                }
+            }
+
+            if ($intent === 'hours') {
+                if (!empty($candidate['hours'])) {
+                    $score += 8;
+                } else {
+                    $score -= 2;
+                }
+            }
+
             if ($weatherContext !== null) {
                 if (($weatherContext['is_rainy'] ?? false) && $this->isOutdoorCandidate($candidate)) {
                     $score -= 8;
@@ -599,6 +1097,10 @@ class KiroBusinessDirectoryService
                 if (($weatherContext['is_hot'] ?? false) && $this->isIndoorFriendlyCandidate($candidate)) {
                     $score += 2;
                 }
+            }
+
+            if (!empty($tokens) && $semanticMatches === 0 && $intent !== 'contact') {
+                continue;
             }
 
             if ($score <= 0 && !empty($tokens)) {
@@ -898,6 +1400,25 @@ class KiroBusinessDirectoryService
 
     private function detectIntent(string $normalizedMessage): string
     {
+        $isGreeting = $this->containsAny($normalizedMessage, [
+            'hola', 'hello', 'hi', 'buenas', 'buenos dias', 'buenas tardes', 'buenas noches', 'que tal', 'como estas',
+        ]);
+        $hasSearchSignal = $this->containsAny($normalizedMessage, [
+            'busco', 'quiero', 'necesito', 'recomienda', 'dame', 'donde', 'cerca', 'lejos', 'telefono', 'horario', 'como llegar',
+        ]);
+
+        if ($isGreeting && !$hasSearchSignal) {
+            return 'smalltalk';
+        }
+
+        if ($this->containsAny($normalizedMessage, ['como llegar', 'ruta', 'trayecto', 'transito', 'trafico', 'cuanto tiempo', 'minutos'])) {
+            return 'route';
+        }
+
+        if ($this->containsAny($normalizedMessage, ['horario', 'abre', 'abren', 'cierra', 'cerrado', 'abierto'])) {
+            return 'hours';
+        }
+
         if ($this->containsAny($normalizedMessage, ['telefono', 'tel', 'whatsapp', 'contacto', 'correo', 'email', 'web', 'pagina'])) {
             return 'contact';
         }
@@ -919,11 +1440,11 @@ class KiroBusinessDirectoryService
 
     private function detectDistanceMode(string $normalizedMessage): string
     {
-        if ($this->containsAny($normalizedMessage, ['muy cerca', 'a pie', 'caminando', 'walking'])) {
+        if ($this->containsAny($normalizedMessage, ['muy cerca', 'a pie', 'caminando', 'walking', '5 minutos', '10 minutos'])) {
             return 'very_near';
         }
 
-        if ($this->containsAny($normalizedMessage, ['cerca', 'cercano', 'cercana'])) {
+        if ($this->containsAny($normalizedMessage, ['cerca', 'cercano', 'cercana', 'proximo', 'próximo'])) {
             return 'near';
         }
 
@@ -944,6 +1465,7 @@ class KiroBusinessDirectoryService
             'buscar', 'dame', 'donde', 'queda', 'algo', 'cerca', 'lejos', 'telefono',
             'correo', 'email', 'web', 'pagina', 'contacto', 'negocio', 'negocios',
             'presupuesto', 'barato', 'economico', 'economica', 'caro', 'clima',
+            'hola', 'buenas', 'hello', 'route', 'ruta', 'horario', 'abierto', 'cerrado',
         ];
 
         $tokens = array_values(array_unique(array_filter(
@@ -1033,7 +1555,7 @@ class KiroBusinessDirectoryService
         foreach ($patterns as $pattern) {
             if (preg_match($pattern, $message, $matches) === 1) {
                 $location = trim((string) ($matches[1] ?? ''), " \t\n\r\0\x0B.,;");
-                $location = trim((string) preg_split('/\b(busco|quiero|necesito|dame|recomienda|recomiendame|con|para)\b/i', $location)[0]);
+                $location = trim((string) preg_split('/\b(busco|quiero|necesito|dame|recomienda|recomiendame|con|para|como llegar|ruta|trafico|transito)\b/i', $location)[0]);
                 if ($location !== '') {
                     return Str::limit($location, 120, '');
                 }
@@ -1065,10 +1587,21 @@ class KiroBusinessDirectoryService
                 ? number_format((float) $row['_distance_km'], 2, '.', '')
                 : null,
             'hours' => $this->nullableValue($row['hours'] ?? null),
+            'hours_summary' => $this->nullableValue($row['hours_summary'] ?? null),
+            'open_now' => $row['open_now'] ?? null,
             'features' => $this->nullableValue($row['features'] ?? null),
             'primary_type' => $this->nullableValue($row['primary_type'] ?? null),
             'category' => $this->nullableValue($row['category'] ?? null),
             'google_maps_url' => $this->nullableValue($row['google_maps_url'] ?? null),
+            'directions_url' => $this->nullableValue($row['directions_url'] ?? null),
+            'route_distance_km' => isset($row['route_distance_km']) && $row['route_distance_km'] !== null
+                ? number_format((float) $row['route_distance_km'], 2, '.', '')
+                : null,
+            'route_duration_min' => isset($row['route_duration_min']) && $row['route_duration_min'] !== null
+                ? (int) $row['route_duration_min']
+                : null,
+            'traffic_level' => $this->nullableValue($row['traffic_level'] ?? null),
+            'route_note' => $this->nullableValue($row['route_note'] ?? null),
             'latitude' => $this->nullableFloat($row['latitude'] ?? null),
             'longitude' => $this->nullableFloat($row['longitude'] ?? null),
         ];
@@ -1240,7 +1773,7 @@ class KiroBusinessDirectoryService
 
     private function isAmbiguous(string $intent, array $tokens, array $matches): bool
     {
-        if ($intent === 'contact') {
+        if (in_array($intent, ['contact', 'smalltalk'], true)) {
             return false;
         }
         if (count($tokens) === 0) {

@@ -2,8 +2,10 @@
 
 namespace App\Services;
 
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 class AIService
 {
@@ -218,6 +220,112 @@ SYSTEM
         return $content ?: '';
     }
 
+    public function kiroSearchPlan(string $message, array $context = [], ?string $model = null): array
+    {
+        if (!$this->isConfigured()) {
+            return [];
+        }
+
+        $contextJson = json_encode(
+            $context,
+            JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT
+        );
+
+        if (!$contextJson) {
+            $contextJson = '{}';
+        }
+
+        $selectedModel = $model
+            ?: (string) config('agents.kiro.planner_model', config('agents.kiro.model', config('services.openai.model', 'gpt-4o-mini')));
+
+        $content = $this->sendChatCompletion(
+            messages: [
+                [
+                    'role' => 'system',
+                    'content' => <<<SYSTEM
+Eres un planner experto para un asistente local de negocios.
+Devuelve SOLO JSON valido con esta forma:
+{
+  "intent": "search|recommend|compare|locate|contact|route|hours|smalltalk",
+  "business_query": "string",
+  "keywords": ["string"],
+  "distance_mode": "none|near|very_near|far",
+  "budget_level": "barato|medio|premium|null",
+  "location_hint": "string|null",
+  "needs_clarification": true,
+  "clarifying_question": "string|null",
+  "response_style": "directo|amigable|conserje|comparativo"
+}
+Reglas:
+- Si el usuario solo saluda, intent=smalltalk y no inventes busqueda.
+- Si pide como llegar, transito o tiempo, intent=route.
+- Si pide horarios/apertura/cierre, intent=hours.
+- Si no hace falta preguntar, needs_clarification=false y clarifying_question=null.
+- keywords maximo 10.
+SYSTEM
+                ],
+                [
+                    'role' => 'user',
+                    'content' => "MENSAJE:\n{$message}\n\nCONTEXTO:\n{$contextJson}",
+                ],
+            ],
+            temperature: 0.1,
+            model: $selectedModel
+        );
+
+        $parsed = $content ? $this->extractJsonObject($content) : null;
+
+        if (!is_array($parsed)) {
+            return [];
+        }
+
+        $intent = strtolower(trim((string) ($parsed['intent'] ?? 'search')));
+        $allowedIntents = ['search', 'recommend', 'compare', 'locate', 'contact', 'route', 'hours', 'smalltalk'];
+        if (!in_array($intent, $allowedIntents, true)) {
+            $intent = 'search';
+        }
+
+        $distanceMode = strtolower(trim((string) ($parsed['distance_mode'] ?? 'none')));
+        if (!in_array($distanceMode, ['none', 'near', 'very_near', 'far'], true)) {
+            $distanceMode = 'none';
+        }
+
+        $budgetLevel = strtolower(trim((string) ($parsed['budget_level'] ?? '')));
+        if (!in_array($budgetLevel, ['barato', 'medio', 'premium'], true)) {
+            $budgetLevel = null;
+        }
+
+        $style = strtolower(trim((string) ($parsed['response_style'] ?? 'directo')));
+        if (!in_array($style, ['directo', 'amigable', 'conserje', 'comparativo'], true)) {
+            $style = 'directo';
+        }
+
+        $keywords = collect(Arr::wrap($parsed['keywords'] ?? []))
+            ->map(fn ($item): string => trim((string) $item))
+            ->filter()
+            ->map(fn (string $item): string => Str::limit(Str::lower($item), 40, ''))
+            ->unique()
+            ->take(10)
+            ->values()
+            ->all();
+
+        $businessQuery = trim((string) ($parsed['business_query'] ?? ''));
+        $locationHint = trim((string) ($parsed['location_hint'] ?? ''));
+        $clarifyingQuestion = trim((string) ($parsed['clarifying_question'] ?? ''));
+
+        return [
+            'intent' => $intent,
+            'business_query' => $businessQuery !== '' ? Str::limit($businessQuery, 160, '') : null,
+            'keywords' => $keywords,
+            'distance_mode' => $distanceMode,
+            'budget_level' => $budgetLevel,
+            'location_hint' => $locationHint !== '' ? Str::limit($locationHint, 120, '') : null,
+            'needs_clarification' => (bool) ($parsed['needs_clarification'] ?? false),
+            'clarifying_question' => $clarifyingQuestion !== '' ? Str::limit($clarifyingQuestion, 140, '') : null,
+            'response_style' => $style,
+        ];
+    }
+
     public function kiroBusinessAgentWithContext(string $message, array $context, ?string $model = null): string
     {
         $contextJson = json_encode(
@@ -230,36 +338,112 @@ SYSTEM
         }
 
         $selectedModel = $model ?: (string) config('agents.kiro.model', config('services.openai.model', 'gpt-4o-mini'));
+        $intent = strtolower(trim((string) ($context['intent'] ?? 'search')));
+        $responseSeed = (int) ($context['response_style_seed'] ?? 0);
+        $systemPrompt = $this->buildKiroSystemPrompt($intent, $responseSeed, $context);
+        $temperature = in_array($intent, ['contact', 'hours', 'route'], true) ? 0.15 : 0.35;
 
         $content = $this->sendChatCompletion(
             messages: [
                 [
                     'role' => 'system',
-                    'content' => <<<SYSTEM
-Eres KIRO, asistente local de negocios y servicios.
-Usa SOLO datos del contexto JSON.
-Reglas:
-- No inventes negocios ni datos.
-- Prioriza cercania real cuando exista distance_km.
-- Interpreta cerca/lejos y presupuesto.
-- Si hay weather, ajusta recomendaciones por clima.
-- Si falta informacion, haz una sola pregunta breve.
-- Si piden contacto, responde directo.
-- Maximo 3 a 5 resultados por respuesta.
-- Formato por resultado: Nombre, Giro/actividad, Direccion, Telefono(si existe), Web(si existe).
-- Texto breve, natural, sin markdown complejo.
-SYSTEM
+                    'content' => $systemPrompt,
                 ],
                 [
                     'role' => 'user',
                     'content' => "MENSAJE:\n{$message}\n\nCONTEXTO_JSON:\n{$contextJson}",
                 ],
             ],
-            temperature: 0.2,
+            temperature: $temperature,
             model: $selectedModel
         );
 
         return $content ?: '';
+    }
+
+    private function buildKiroSystemPrompt(string $intent, int $responseSeed, array $context): string
+    {
+        $styleVariants = [
+            0 => 'directo y preciso',
+            1 => 'amigable y breve',
+            2 => 'tipo concierge con pasos accionables',
+            3 => 'comparativo orientado a decision',
+        ];
+        $styleDirective = $styleVariants[$responseSeed % 4] ?? $styleVariants[0];
+        $modelStyle = strtolower(trim((string) ($context['model_style'] ?? '')));
+
+        $intentPrompt = match ($intent) {
+            'smalltalk' => <<<PROMPT
+- Si es saludo o charla breve: responde natural en 1-2 lineas y luego una sola pregunta util (giro o zona).
+- No listes negocios salvo que el usuario lo pida.
+PROMPT,
+            'contact' => <<<PROMPT
+- Responde directo con contacto del negocio mas relevante o del ultimo mencionado.
+- Incluye telefono/email/web solo si existen.
+PROMPT,
+            'compare' => <<<PROMPT
+- Compara maximo 3 opciones.
+- En cada opcion incluye: nombre, giro, distancia, rango de precio y un diferenciador.
+- Cierra con una recomendacion final de una sola linea.
+PROMPT,
+            'route' => <<<PROMPT
+- Prioriza como llegar desde la ubicacion del usuario.
+- Si existe route_duration_min o route_distance_km, muestralos.
+- Si falta ubicacion del usuario, pide una sola aclaracion corta.
+- Si no hay trafico en tiempo real, da tiempo estimado y dilo claramente.
+PROMPT,
+            'hours' => <<<PROMPT
+- Prioriza horarios y si esta abierto/cerrado cuando exista open_now.
+- Si no hay horario confiable, dilo y sugiere llamar.
+PROMPT,
+            'locate' => <<<PROMPT
+- Prioriza cercania real y direccion util para llegar.
+- Incluye distancia cuando exista.
+PROMPT,
+            default => <<<PROMPT
+- Recomienda 3-5 lugares maximo, ordenados por relevancia (cercania + coincidencia + presupuesto).
+- Si no hay coincidencia exacta, sugiere alternativas cercanas/similares.
+PROMPT,
+        };
+
+        return <<<SYSTEM
+Eres KIRO, asistente local inteligente de negocios y servicios.
+Usa SOLO datos del CONTEXTO_JSON.
+Reglas globales:
+- No inventes negocios, horarios, telefonos ni rutas.
+- No repitas siempre las mismas aperturas/cierres. Evita frases fijas repetitivas en cada turno.
+- Si CONTEXTO_JSON incluye "clarifying_question" y "ambiguous"=true, haz solo esa pregunta.
+- Mantente breve, claro y accionable.
+- Formato por negocio: Nombre, Giro/actividad, Direccion, Telefono(si existe), Web(si existe).
+- Escribe en espanol natural.
+Estilo del turno: {$styleDirective}.
+Preferencia de estilo del planner: {$modelStyle}.
+Instrucciones por tipo de solicitud:
+{$intentPrompt}
+SYSTEM;
+    }
+
+    private function extractJsonObject(string $content): ?array
+    {
+        $content = trim($content);
+
+        if ($content === '') {
+            return null;
+        }
+
+        $clean = preg_replace('/```json|```/i', '', $content) ?? $content;
+        $decoded = json_decode(trim($clean), true);
+
+        if (is_array($decoded)) {
+            return $decoded;
+        }
+
+        if (preg_match('/\{.*\}/s', $clean, $matches) !== 1) {
+            return null;
+        }
+
+        $decoded = json_decode($matches[0], true);
+        return is_array($decoded) ? $decoded : null;
     }
 
     private function sendChatCompletion(array $messages, float $temperature = 0.4, ?string $model = null): ?string
@@ -318,4 +502,3 @@ SYSTEM
         ];
     }
 }
-
