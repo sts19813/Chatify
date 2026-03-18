@@ -19,7 +19,7 @@ class RegisterAgentCommand extends Command
     protected $signature = 'agent:register
         {name : Nombre visible del agente}
         {email : Email del usuario agente}
-        {type=municipal : Tipo de agente [municipal|finance|real_estate|intelligent]}
+        {type=municipal : Tipo de agente [municipal|finance|real_estate|kiro|intelligent]}
         {--key= : Clave unica del agente}
         {--dataset= : Ruta del dataset JSON (municipal o real_estate)}
         {--password= : Password inicial del usuario}
@@ -48,10 +48,10 @@ class RegisterAgentCommand extends Command
         $type = trim((string) $this->argument('type'));
         $enabled = (bool) ((int) $this->option('enabled'));
 
-        $allowedTypes = ['municipal', 'finance', 'real_estate', 'intelligent'];
+        $allowedTypes = ['municipal', 'finance', 'real_estate', 'kiro', 'intelligent'];
 
         if (!in_array($type, $allowedTypes, true)) {
-            $this->error('Tipo invalido. Usa: municipal, finance, real_estate, intelligent');
+            $this->error('Tipo invalido. Usa: municipal, finance, real_estate, kiro, intelligent');
             return self::FAILURE;
         }
 
@@ -117,6 +117,13 @@ class RegisterAgentCommand extends Command
                 'max_projects_context' => (int) config('agents.real_estate.max_projects_context', 3),
                 'max_resources_context' => (int) config('agents.real_estate.max_resources_context', 8),
                 'max_features_context' => (int) config('agents.real_estate.max_features_context', 10),
+            ];
+        } elseif ($type === 'kiro') {
+            $settings = [
+                'model' => (string) config('agents.kiro.model', config('services.openai.model', 'gpt-4o-mini')),
+                'max_history_context' => (int) config('agents.kiro.max_history_context', 8),
+                'max_candidates_context' => (int) config('agents.kiro.max_candidates_context', 120),
+                'max_results' => (int) config('agents.kiro.max_results', 5),
             ];
         }
 

@@ -289,6 +289,76 @@ SYSTEM
         return $content ?: '';
     }
 
+    public function kiroBusinessAgentWithContext(string $message, array $context, ?string $model = null): string
+    {
+        $contextJson = json_encode(
+            $context,
+            JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT
+        );
+
+        if (!$contextJson) {
+            $contextJson = '{}';
+        }
+
+        $selectedModel = $model ?: (string) config('agents.kiro.model', config('services.openai.model', 'gpt-4o-mini'));
+
+        $content = $this->sendChatCompletion(
+            messages: [
+                [
+                    'role' => 'system',
+                    'content' => <<<SYSTEM
+Eres KIRO, un asistente local inteligente de negocios y servicios.
+
+Tu funcion:
+- Ayudar al usuario a encontrar negocios, servicios y recomendaciones usando SOLO la base local.
+
+Contexto disponible (siempre usarlo):
+- Ubicacion del usuario: {{user_location}}
+- Historial del chat: {{chat_history}}
+- Hora actual: {{current_time}}
+- Datos de negocios: business_directories
+
+Campos clave:
+giro, nombre_comercial, razon_social, actividad, calle, numero_exterior, colonia, ciudad, estado, codigo_postal, telefono, email, pagina_web
+
+Comportamiento:
+- Detecta la intencion: buscar, comparar, recomendar, ubicar o contactar.
+- Usa historial y preferencias para no repetir preguntas.
+- Prioriza resultados cercanos a la ubicacion del usuario.
+- Si la solicitud es ambigua, haz UNA sola pregunta breve para precisar.
+- Responde claro, util y accionable.
+
+Formato al recomendar:
+- Nombre
+- Giro o actividad
+- Direccion completa (Calle + numero, Colonia, Ciudad, Estado, CP)
+- Telefono (si existe)
+- Web (si existe)
+- Maximo 3 a 5 resultados por respuesta.
+- Ordena por relevancia (ubicacion + coincidencia semantica).
+
+Reglas duras:
+- No inventes negocios ni datos.
+- Si no hay resultado exacto, ofrece alternativas similares en la misma zona.
+- Lenguaje natural, no tecnico.
+- Respuestas cortas y utiles.
+- Si piden "dame el telefono", responde directo con el contacto del ultimo negocio mencionado en contexto.
+- Resume historial internamente (no lo muestres literalmente).
+- toda la respuestas que des, se muy natural, como una persona promedio, no utilices nunca emojis ni caracteres #* al menos que sea necesrio
+SYSTEM
+                ],
+                [
+                    'role' => 'user',
+                    'content' => "MENSAJE DEL USUARIO:\n{$message}\n\nCONTEXTO KIRO:\n{$contextJson}",
+                ],
+            ],
+            temperature: 0.2,
+            model: $selectedModel
+        );
+
+        return $content ?: '';
+    }
+
     private function sendChatCompletion(
         array $messages,
         float $temperature = 0.4,

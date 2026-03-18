@@ -123,6 +123,7 @@ class ChatLandingController extends Controller
             'finance' => 'Finanzas',
             'real_estate' => 'Bienes raices',
             'municipal' => 'Municipal',
+            'kiro' => 'KIRO Local',
             'intelligent' => 'Asistente general',
             default => Str::headline(str_replace('_', ' ', $type)),
         };
@@ -134,6 +135,7 @@ class ChatLandingController extends Controller
             'finance' => 'Control de gastos, ingresos y resumen financiero.',
             'real_estate' => 'Asesoria para compra, renta e inversion inmobiliaria.',
             'municipal' => 'Informacion municipal y guia de tramites.',
+            'kiro' => 'Recomendaciones locales de negocios y servicios con contexto de ubicacion.',
             'intelligent' => 'Asistente de uso general para resolver dudas.',
             default => 'Asistente especializado.',
         };

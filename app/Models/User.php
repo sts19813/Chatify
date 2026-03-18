@@ -57,4 +57,9 @@ class User extends Authenticatable
         return $this->hasOne(AIAgent::class);
     }
 
+    public function kiroContext(): HasOne
+    {
+        return $this->hasOne(KiroUserContext::class);
+    }
+
 }

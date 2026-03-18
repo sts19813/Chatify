@@ -55,4 +55,16 @@ return [
         'max_resources_context' => 8,
         'max_features_context' => 10,
     ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | KIRO Local Business Agent Defaults
+    |--------------------------------------------------------------------------
+    */
+    'kiro' => [
+        'model' => env('OPENAI_MODEL_KIRO', env('OPENAI_MODEL', 'gpt-4o-mini')),
+        'max_history_context' => 20,
+        'max_candidates_context' => 120,
+        'max_results' => 3,
+    ],
 ];

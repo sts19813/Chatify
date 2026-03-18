@@ -13,6 +13,7 @@ class AgentRouterService
         private readonly ReminderService $reminderService,
         private readonly MunicipalKnowledgeService $municipalKnowledgeService,
         private readonly RealEstateKnowledgeService $realEstateKnowledgeService,
+        private readonly KiroBusinessDirectoryService $kiroBusinessDirectoryService,
     ) {
     }
 
@@ -29,6 +30,7 @@ class AgentRouterService
                 'finance' => $this->replyFromFinanceAgent($senderId, $message),
                 'real_estate' => $this->replyFromRealEstateAgent($message, $agent),
                 'municipal' => $this->replyFromMunicipalAgent($message, $agent),
+                'kiro' => $this->replyFromKiroAgent($senderId, $receiverId, $message, $agent),
                 'intelligent' => $this->aiService->intelligentAgent($message),
                 default => $this->aiService->intelligentAgent($message),
             };
@@ -113,6 +115,35 @@ class AgentRouterService
 
         if (trim($response) === '') {
             return $this->realEstateKnowledgeService->buildFallbackAnswer($message, $context);
+        }
+
+        return $response;
+    }
+
+    private function replyFromKiroAgent(int $userId, int $agentUserId, string $message, array $agent): string
+    {
+        $context = $this->kiroBusinessDirectoryService->buildContext(
+            userId: $userId,
+            agentUserId: $agentUserId,
+            message: $message,
+            settings: $agent['settings'] ?? [],
+        );
+
+        if (isset($context['error']) || !$this->aiService->isConfigured()) {
+            return $this->kiroBusinessDirectoryService->buildFallbackAnswer($message, $context);
+        }
+
+        $model = data_get($agent, 'settings.model');
+        $model = is_string($model) && trim($model) !== '' ? trim($model) : null;
+
+        $response = $this->aiService->kiroBusinessAgentWithContext(
+            message: $message,
+            context: $context,
+            model: $model,
+        );
+
+        if (trim($response) === '') {
+            return $this->kiroBusinessDirectoryService->buildFallbackAnswer($message, $context);
         }
 
         return $response;
