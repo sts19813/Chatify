@@ -64,7 +64,12 @@ return [
     'kiro' => [
         'model' => env('OPENAI_MODEL_KIRO', env('OPENAI_MODEL', 'gpt-4o-mini')),
         'max_history_context' => 20,
-        'max_candidates_context' => 120,
+        'max_candidates_context' => 350,
         'max_results' => 3,
+        'near_km_default' => 8,
+        'near_km_very_close' => 3,
+        'geocode_timeout_seconds' => 8,
+        'weather_enabled' => true,
+        'weather_timeout_seconds' => 8,
     ],
 ];

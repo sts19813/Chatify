@@ -124,6 +124,11 @@ class RegisterAgentCommand extends Command
                 'max_history_context' => (int) config('agents.kiro.max_history_context', 8),
                 'max_candidates_context' => (int) config('agents.kiro.max_candidates_context', 120),
                 'max_results' => (int) config('agents.kiro.max_results', 5),
+                'near_km_default' => (float) config('agents.kiro.near_km_default', 8),
+                'near_km_very_close' => (float) config('agents.kiro.near_km_very_close', 3),
+                'geocode_timeout_seconds' => (int) config('agents.kiro.geocode_timeout_seconds', 8),
+                'weather_enabled' => (bool) config('agents.kiro.weather_enabled', true),
+                'weather_timeout_seconds' => (int) config('agents.kiro.weather_timeout_seconds', 8),
             ];
         }
 

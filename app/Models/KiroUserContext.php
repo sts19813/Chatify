@@ -10,6 +10,8 @@ class KiroUserContext extends Model
     protected $fillable = [
         'user_id',
         'user_location',
+        'location_latitude',
+        'location_longitude',
         'price_preference',
         'preference_tags',
         'interest_patterns',
@@ -27,6 +29,8 @@ class KiroUserContext extends Model
             'interest_patterns' => 'array',
             'last_result_ids' => 'array',
             'last_interaction_at' => 'datetime',
+            'location_latitude' => 'float',
+            'location_longitude' => 'float',
         ];
     }
 
