@@ -67,7 +67,7 @@ return [
         'planner_model' => env('OPENAI_MODEL_KIRO_PLANNER', env('OPENAI_MODEL_KIRO', env('OPENAI_MODEL', 'gpt-4o-mini'))),
         'max_history_context' => 5,
         'max_candidates_context' => 50,
-        'max_results' => 2,
+        'max_results' => 1,
         'near_km_default' => 1,
         'near_km_very_close' => 3,
         'geocode_timeout_seconds' => 8,

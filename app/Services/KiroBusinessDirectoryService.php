@@ -14,6 +14,7 @@ class KiroBusinessDirectoryService
 {
     private static ?array $sourceCache = null;
     private array $routeCache = [];
+    private array $lastPlannerInput = [];
 
     public function __construct(
         private readonly AIService $aiService
@@ -69,6 +70,7 @@ class KiroBusinessDirectoryService
 
         $chatHistory = $this->loadChatHistory($userId, $agentUserId, $maxHistory);
         $chatSummary = $this->buildInternalSummary($chatHistory, (string) ($userContext?->chat_summary ?? ''));
+        $this->lastPlannerInput = [];
 
         $modelPlan = $plannerEnabled
             ? $this->resolveModelPlan(
@@ -85,10 +87,12 @@ class KiroBusinessDirectoryService
 
         $extraTokens = $this->extractSearchTokens($this->normalizeText((string) ($modelPlan['business_query'] ?? '')));
         $plannerKeywords = array_values(array_filter(array_map(
-            fn ($keyword): string => $this->normalizeText((string) $keyword),
+            fn($keyword): string => $this->normalizeText((string) $keyword),
             Arr::wrap($modelPlan['keywords'] ?? [])
         )));
         $tokens = $this->mergeTokens($tokens, $extraTokens, $plannerKeywords);
+
+        $tokens = $this->expandSemanticTokens($tokens);
 
         if ($locationFromMessage === null && !empty($modelPlan['location_hint'])) {
             $userLocation = Str::limit(trim((string) $modelPlan['location_hint']), 120, '');
@@ -106,7 +110,7 @@ class KiroBusinessDirectoryService
         if (!empty($locationTokens)) {
             $tokens = array_values(array_filter(
                 $tokens,
-                static fn (string $token): bool => !in_array($token, $locationTokens, true)
+                static fn(string $token): bool => !in_array($token, $locationTokens, true)
             ));
         }
 
@@ -117,7 +121,7 @@ class KiroBusinessDirectoryService
         $needsHoursContext = $this->needsHoursContext($intent, $normalizedMessage);
 
         $matchedBusinesses = [];
-        $lastResultIds = array_values(array_filter(array_map(static fn ($id): int => (int) $id, Arr::wrap($userContext?->last_result_ids ?? []))));
+        $lastResultIds = array_values(array_filter(array_map(static fn($id): int => (int) $id, Arr::wrap($userContext?->last_result_ids ?? []))));
         $directContactMode = false;
 
         if ($intent === 'contact' && !empty($lastResultIds)) {
@@ -153,12 +157,13 @@ class KiroBusinessDirectoryService
                 $userLatitude,
                 $userLongitude,
                 $weatherContext,
-                $geocodeTimeout
+                $geocodeTimeout,
+                $userLocation ?? ''
             );
             $matchedBusinesses = array_slice($scored, 0, $maxResults);
         }
 
-        $mappedBusinesses = array_map(fn (array $row): array => $this->toBusinessPayload($row, $sourceType), $matchedBusinesses);
+        $mappedBusinesses = array_map(fn(array $row): array => $this->toBusinessPayload($row, $sourceType), $matchedBusinesses);
         $mappedBusinesses = $this->enrichBusinessHours($mappedBusinesses);
         if ($needsRouteContext) {
             $mappedBusinesses = $this->enrichBusinessRoutes(
@@ -209,6 +214,7 @@ class KiroBusinessDirectoryService
             'budget_intent' => $budgetIntent,
             'interest_patterns' => $interestPatterns,
             'model_plan' => $modelPlan,
+            'planner_input' => $this->lastPlannerInput,
             'model_style' => $modelPlan['response_style'] ?? null,
             'response_style_seed' => $responseStyleSeed,
             'clarifying_question' => $clarifyingQuestion,
@@ -329,17 +335,18 @@ class KiroBusinessDirectoryService
         }
 
         $patternsCollection = collect($interestPatterns);
-        $interestSignals = $patternsCollection->keys()->contains(static fn ($key): bool => is_string($key))
+        $interestSignals = $patternsCollection->keys()->contains(static fn($key): bool => is_string($key))
             ? $patternsCollection->keys()->take(8)->values()->all()
             : $patternsCollection->take(8)->values()->all();
+        $this->lastPlannerInput = [
+            'user_location' => $userLocation,
+            'chat_summary' => $chatSummary,
+            'interest_signals' => $interestSignals,
+        ];
 
         return $this->aiService->kiroSearchPlan(
             message: $message,
-            context: [
-                'user_location' => $userLocation,
-                'chat_summary' => $chatSummary,
-                'interest_signals' => $interestSignals,
-            ],
+            context: $this->lastPlannerInput,
             model: $plannerModel
         );
     }
@@ -444,8 +451,14 @@ class KiroBusinessDirectoryService
         }
 
         return $this->containsAny($normalizedMessage, [
-            'como llegar', 'ruta', 'trayecto', 'transito', 'trafico',
-            'cuanto tiempo', 'cuanto hago', 'minutos',
+            'como llegar',
+            'ruta',
+            'trayecto',
+            'transito',
+            'trafico',
+            'cuanto tiempo',
+            'cuanto hago',
+            'minutos',
         ]);
     }
 
@@ -729,7 +742,7 @@ class KiroBusinessDirectoryService
         $userContext->last_intent = $intent;
         $userContext->last_query = $message;
         $userContext->last_result_ids = array_values(array_map(
-            static fn (array $business): int => (int) ($business['id'] ?? 0),
+            static fn(array $business): int => (int) ($business['id'] ?? 0),
             $mappedBusinesses,
         ));
         $userContext->last_interaction_at = now();
@@ -799,7 +812,7 @@ class KiroBusinessDirectoryService
                     ->orderByDesc('rating');
             }
 
-            return $query->limit($maxCandidates)->get()->map(fn ($row): array => $this->normalizeMasterRow((array) $row))->all();
+            return $query->limit($maxCandidates)->get()->map(fn($row): array => $this->normalizeMasterRow((array) $row))->all();
         }
 
         $query->select([
@@ -837,17 +850,18 @@ class KiroBusinessDirectoryService
             $this->applyTokenFilter($query, $locationTokens, ['colonia', 'ciudad', 'estado', 'codigo_postal']);
         }
 
-        return $query->limit($maxCandidates)->get()->map(fn ($row): array => $this->normalizeLegacyRow((array) $row))->all();
+        return $query->limit($maxCandidates)->get()->map(fn($row): array => $this->normalizeLegacyRow((array) $row))->all();
     }
 
     private function applyTokenFilter(Builder $query, array $tokens, array $columns): void
     {
         $query->where(function ($where) use ($tokens, $columns): void {
-            foreach (array_slice($tokens, 0, 8) as $token) {
-                $like = '%' . $token . '%';
-
+            foreach (array_slice($tokens, 0, 6) as $token) {
                 foreach ($columns as $column) {
-                    $where->orWhere($column, 'like', $like);
+                    $where->orWhere($column, 'like', "%{$token}%");
+                    if (strlen($token) > 4) {
+                        $where->orWhere($column, 'like', "%" . substr($token, 0, 4) . "%");
+                    }
                 }
             }
         });
@@ -855,7 +869,7 @@ class KiroBusinessDirectoryService
 
     private function fetchBusinessesByIds(string $sourceTable, string $sourceType, array $ids): array
     {
-        $validIds = array_values(array_unique(array_filter($ids, static fn ($id): bool => (int) $id > 0)));
+        $validIds = array_values(array_unique(array_filter($ids, static fn($id): bool => (int) $id > 0)));
 
         if (empty($validIds)) {
             return [];
@@ -907,10 +921,12 @@ class KiroBusinessDirectoryService
         ?float $userLatitude,
         ?float $userLongitude,
         ?array $weatherContext,
-        int $geocodeTimeout
+        int $geocodeTimeout,
+        ?string $userLocationText
     ): array {
         $scored = [];
         $geoCalls = 0;
+        $userLocationText = $this->normalizeText((string) $userLocationText);
 
         foreach ($candidates as $candidate) {
             $score = 0;
@@ -927,26 +943,27 @@ class KiroBusinessDirectoryService
                 $candidate['postal_code'] ?? '',
             ]));
 
+            // 🔥 SCORING SEMÁNTICO MEJORADO
             foreach ($tokens as $token) {
                 $matchedThisToken = false;
 
                 if (str_contains($name, $token)) {
-                    $score += 7;
+                    $score += 12;
                     $matchedThisToken = true;
                 }
 
                 if (str_contains($activity, $token)) {
-                    $score += 6;
+                    $score += 8;
                     $matchedThisToken = true;
                 }
 
                 if (str_contains($category, $token)) {
-                    $score += 5;
+                    $score += 6;
                     $matchedThisToken = true;
                 }
 
                 if (str_contains($searchable, $token)) {
-                    $score += 3;
+                    $score += 4;
                     $matchedThisToken = true;
                 }
 
@@ -955,47 +972,30 @@ class KiroBusinessDirectoryService
                 }
             }
 
+            // 🔥 BONUS SEMÁNTICO
+            if ($semanticMatches >= 2) {
+                $score += 10;
+            }
+
+            // 🔥 UBICACIÓN POR TEXTO (CORREGIDO)
             foreach ($locationTokens as $token) {
                 if (str_contains($locationText, $token)) {
-                    $score += 7;
+                    $score += 10;
                 }
+            }
+
+            // 🔥 match directo con ubicación del usuario
+            if ($userLocationText !== '' && str_contains($locationText, $userLocationText)) {
+                $score += 15;
             }
 
             $distanceKm = null;
             $candidateLatitude = $this->nullableFloat($candidate['latitude'] ?? null);
             $candidateLongitude = $this->nullableFloat($candidate['longitude'] ?? null);
 
-            if (($distanceMode === 'very_near' || $distanceMode === 'near' || $distanceMode === 'far')
-                && $userLatitude !== null
-                && $userLongitude !== null
-                && ($candidateLatitude === null || $candidateLongitude === null)
-            ) {
-                $geoQuery = $this->buildCandidateGeoQuery($candidate);
-
-                if ($geoQuery !== null) {
-                    $geo = $this->resolveCoordinatesByQuery($geoQuery, false, $geocodeTimeout);
-
-                    if ($geo === null && $geoCalls < 6) {
-                        $geoCalls++;
-                        $geo = $this->resolveCoordinatesByQuery($geoQuery, true, $geocodeTimeout);
-                    }
-
-                    if ($geo !== null) {
-                        $candidateLatitude = (float) $geo['latitude'];
-                        $candidateLongitude = (float) $geo['longitude'];
-                        $candidate['latitude'] = $candidateLatitude;
-                        $candidate['longitude'] = $candidateLongitude;
-
-                        if ($sourceType === 'master') {
-                            $this->persistMasterCoordinatesIfMissing(
-                                $sourceTable,
-                                (int) ($candidate['id'] ?? 0),
-                                $candidateLatitude,
-                                $candidateLongitude
-                            );
-                        }
-                    }
-                }
+            // 🔥 MENOS DEPENDENCIA DE GEO
+            if ($distanceMode !== 'none' && $candidateLatitude === null) {
+                $score -= 5;
             }
 
             if ($userLatitude !== null && $userLongitude !== null && $candidateLatitude !== null && $candidateLongitude !== null) {
@@ -1005,105 +1005,56 @@ class KiroBusinessDirectoryService
                 $candidate['_distance_km'] = null;
             }
 
-            if ($distanceMode === 'very_near') {
-                if ($distanceKm !== null) {
-                    if ($distanceKm > max(6.0, $nearKmVeryClose * 2.5)) {
-                        continue;
-                    }
-
-                    $score += $distanceKm <= $nearKmVeryClose ? 26 : -((int) min(26, ($distanceKm - $nearKmVeryClose) * 4));
-                } else {
-                    $score -= 10;
-                }
-            } elseif ($distanceMode === 'near') {
-                if ($distanceKm !== null) {
-                    if ($distanceKm > max(20.0, $nearKmDefault * 2.5)) {
-                        continue;
-                    }
-
-                    $score += $distanceKm <= $nearKmDefault ? 18 : -((int) min(16, ($distanceKm - $nearKmDefault) * 2.2));
-                } elseif (in_array('cerca', $preferenceTags, true)) {
-                    $score -= 6;
-                }
-            } elseif ($distanceMode === 'far' && $distanceKm !== null) {
-                $score += (int) min(15, $distanceKm * 1.4);
+            // 🔥 DISTANCIA (solo si existe)
+            if ($distanceMode === 'near' && $distanceKm !== null) {
+                $score += $distanceKm <= $nearKmDefault ? 15 : -5;
             }
 
+            // 🔥 PRESUPUESTO
             if (($budgetIntent['max_price'] ?? null) !== null) {
                 $maxPrice = (float) $budgetIntent['max_price'];
                 $priceFrom = $this->nullableFloat($candidate['price_from'] ?? null);
 
                 if ($priceFrom !== null) {
-                    $score += $priceFrom <= $maxPrice ? 12 : -8;
+                    $score += $priceFrom <= $maxPrice ? 10 : -6;
                 }
             }
 
             $candidateBudget = $this->normalizeBudgetLevel($candidate['budget_level'] ?? null);
+
             if (($budgetIntent['level'] ?? null) !== null && $candidateBudget !== null) {
                 $target = $this->normalizeBudgetLevel($budgetIntent['level']);
-                $score += $target === $candidateBudget ? 7 : -3;
+                $score += $target === $candidateBudget ? 6 : -2;
             }
 
             if ($pricePreference === 'barato' && $candidateBudget === 'barato') {
                 $score += 4;
             }
 
-            if ($pricePreference === 'premium' && $candidateBudget === 'premium') {
-                $score += 4;
-            }
-
+            // 🔥 RATING
             $rating = $this->nullableFloat($candidate['rating'] ?? null);
             if ($rating !== null) {
-                $score += (int) min(6, round($rating));
+                $score += min(5, round($rating));
             }
 
+            // 🔥 CONTACTO
             if ($intent === 'contact') {
                 if (!empty($candidate['phone'])) {
                     $score += 3;
-                }
-
-                if (!empty($candidate['email']) || !empty($candidate['website'])) {
-                    $score += 2;
-                }
-            }
-
-            if ($intent === 'route' || $intent === 'locate') {
-                if ($candidateLatitude !== null && $candidateLongitude !== null) {
-                    $score += 6;
-                }
-
-                if (!empty($candidate['google_maps_url'])) {
-                    $score += 3;
-                }
-            }
-
-            if ($intent === 'hours') {
-                if (!empty($candidate['hours'])) {
-                    $score += 8;
-                } else {
-                    $score -= 2;
                 }
             }
 
             if ($weatherContext !== null) {
                 if (($weatherContext['is_rainy'] ?? false) && $this->isOutdoorCandidate($candidate)) {
-                    $score -= 8;
-                }
-
-                if (($weatherContext['is_rainy'] ?? false) && $this->isIndoorFriendlyCandidate($candidate)) {
-                    $score += 4;
-                }
-
-                if (($weatherContext['is_hot'] ?? false) && $this->isIndoorFriendlyCandidate($candidate)) {
-                    $score += 2;
+                    $score -= 6;
                 }
             }
 
             if (!empty($tokens) && $semanticMatches === 0 && $intent !== 'contact') {
-                continue;
+                $score -= 8;
             }
 
-            if ($score <= 0 && !empty($tokens)) {
+            if ($score <= -5) {
                 continue;
             }
 
@@ -1119,11 +1070,9 @@ class KiroBusinessDirectoryService
 
             $distanceA = $a['_distance_km'] ?? null;
             $distanceB = $b['_distance_km'] ?? null;
+
             if (is_numeric($distanceA) && is_numeric($distanceB)) {
-                $distanceSort = $distanceA <=> $distanceB;
-                if ($distanceSort !== 0) {
-                    return $distanceSort;
-                }
+                return $distanceA <=> $distanceB;
             }
 
             return strcmp((string) ($a['name'] ?? ''), (string) ($b['name'] ?? ''));
@@ -1184,8 +1133,7 @@ class KiroBusinessDirectoryService
         ?float $previousLongitude,
         bool $forceRefresh,
         int $geocodeTimeout
-    ): array
-    {
+    ): array {
         if (!$forceRefresh && $previousLatitude !== null && $previousLongitude !== null) {
             return [$previousLatitude, $previousLongitude];
         }
@@ -1276,13 +1224,34 @@ class KiroBusinessDirectoryService
         return ['latitude' => $latitude, 'longitude' => $longitude];
     }
 
+    private function expandSemanticTokens(array $tokens): array
+    {
+        $map = [
+            'comida' => ['restaurant', 'restaurante', 'tacos', 'cocina', 'antojitos'],
+            'birria' => ['tacos', 'mexicana', 'comida'],
+            'hamburguesa' => ['fast food', 'comida', 'restaurant'],
+            'barato' => ['economico', 'accesible'],
+            'caro' => ['premium', 'lujo'],
+            'doctor' => ['clinica', 'medico', 'salud'],
+            'farmacia' => ['medicina', 'salud'],
+        ];
+
+        $expanded = $tokens;
+
+        foreach ($tokens as $token) {
+            if (isset($map[$token])) {
+                $expanded = array_merge($expanded, $map[$token]);
+            }
+        }
+
+        return array_values(array_unique($expanded));
+    }
     private function resolveWeatherContext(
         ?float $latitude,
         ?float $longitude,
         string $normalizedMessage,
         int $timeoutSeconds
-    ): ?array
-    {
+    ): ?array {
         if ($latitude === null || $longitude === null) {
             return null;
         }
@@ -1378,7 +1347,7 @@ class KiroBusinessDirectoryService
                     'content' => Str::limit(trim($body), 320),
                 ];
             })
-            ->filter(fn (array $entry): bool => $entry['content'] !== '')
+            ->filter(fn(array $entry): bool => $entry['content'] !== '')
             ->values()
             ->all();
     }
@@ -1401,10 +1370,28 @@ class KiroBusinessDirectoryService
     private function detectIntent(string $normalizedMessage): string
     {
         $isGreeting = $this->containsAny($normalizedMessage, [
-            'hola', 'hello', 'hi', 'buenas', 'buenos dias', 'buenas tardes', 'buenas noches', 'que tal', 'como estas',
+            'hola',
+            'hello',
+            'hi',
+            'buenas',
+            'buenos dias',
+            'buenas tardes',
+            'buenas noches',
+            'que tal',
+            'como estas',
         ]);
         $hasSearchSignal = $this->containsAny($normalizedMessage, [
-            'busco', 'quiero', 'necesito', 'recomienda', 'dame', 'donde', 'cerca', 'lejos', 'telefono', 'horario', 'como llegar',
+            'busco',
+            'quiero',
+            'necesito',
+            'recomienda',
+            'dame',
+            'donde',
+            'cerca',
+            'lejos',
+            'telefono',
+            'horario',
+            'como llegar',
         ]);
 
         if ($isGreeting && !$hasSearchSignal) {
@@ -1459,18 +1446,70 @@ class KiroBusinessDirectoryService
     {
         $rawTokens = preg_split('/[^a-z0-9]+/', $normalizedMessage) ?: [];
         $stopWords = [
-            'de', 'la', 'el', 'los', 'las', 'en', 'y', 'o', 'a', 'un', 'una',
-            'para', 'por', 'con', 'que', 'como', 'del', 'al', 'mi', 'tu', 'su',
-            'me', 'te', 'se', 'es', 'son', 'hay', 'quiero', 'necesito', 'busco',
-            'buscar', 'dame', 'donde', 'queda', 'algo', 'cerca', 'lejos', 'telefono',
-            'correo', 'email', 'web', 'pagina', 'contacto', 'negocio', 'negocios',
-            'presupuesto', 'barato', 'economico', 'economica', 'caro', 'clima',
-            'hola', 'buenas', 'hello', 'route', 'ruta', 'horario', 'abierto', 'cerrado',
+            'de',
+            'la',
+            'el',
+            'los',
+            'las',
+            'en',
+            'y',
+            'o',
+            'a',
+            'un',
+            'una',
+            'para',
+            'por',
+            'con',
+            'que',
+            'como',
+            'del',
+            'al',
+            'mi',
+            'tu',
+            'su',
+            'me',
+            'te',
+            'se',
+            'es',
+            'son',
+            'hay',
+            'quiero',
+            'necesito',
+            'busco',
+            'buscar',
+            'dame',
+            'donde',
+            'queda',
+            'algo',
+            'cerca',
+            'lejos',
+            'telefono',
+            'correo',
+            'email',
+            'web',
+            'pagina',
+            'contacto',
+            'negocio',
+            'negocios',
+            'presupuesto',
+            'barato',
+            'economico',
+            'economica',
+            'caro',
+            'clima',
+            'hola',
+            'buenas',
+            'hello',
+            'route',
+            'ruta',
+            'horario',
+            'abierto',
+            'cerrado',
         ];
 
         $tokens = array_values(array_unique(array_filter(
             $rawTokens,
-            static fn (string $token): bool => strlen($token) >= 3 && !in_array($token, $stopWords, true),
+            static fn(string $token): bool => strlen($token) >= 3 && !in_array($token, $stopWords, true),
         )));
 
         return array_slice($tokens, 0, 14);
@@ -1483,7 +1522,7 @@ class KiroBusinessDirectoryService
         }
 
         $tokens = preg_split('/[^a-z0-9]+/', $this->normalizeText($location)) ?: [];
-        return array_values(array_filter($tokens, static fn (string $token): bool => strlen($token) >= 3));
+        return array_values(array_filter($tokens, static fn(string $token): bool => strlen($token) >= 3));
     }
 
     private function extractBudgetIntent(string $normalizedMessage): array
@@ -1507,7 +1546,7 @@ class KiroBusinessDirectoryService
 
     private function detectPreferenceTags(string $normalizedMessage, array $existingTags): array
     {
-        $tags = collect($existingTags)->map(fn ($tag): string => $this->normalizeText((string) $tag))->filter()->values()->all();
+        $tags = collect($existingTags)->map(fn($tag): string => $this->normalizeText((string) $tag))->filter()->values()->all();
 
         if ($this->containsAny($normalizedMessage, ['barato', 'economico', 'economica', 'accesible'])) {
             $tags[] = 'barato';
@@ -1890,7 +1929,7 @@ class KiroBusinessDirectoryService
 
     private function buildSearchableText(array $parts): string
     {
-        return collect($parts)->map(fn ($part): string => trim((string) $part))->filter()->implode(' ');
+        return collect($parts)->map(fn($part): string => trim((string) $part))->filter()->implode(' ');
     }
 
     private function isOutdoorCandidate(array $candidate): bool

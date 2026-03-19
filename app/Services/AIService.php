@@ -226,49 +226,12 @@ SYSTEM
             return [];
         }
 
-        $contextJson = json_encode(
-            $context,
-            JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT
-        );
-
-        if (!$contextJson) {
-            $contextJson = '{}';
-        }
-
         $selectedModel = $model
             ?: (string) config('agents.kiro.planner_model', config('agents.kiro.model', config('services.openai.model', 'gpt-4o-mini')));
+        $messages = $this->buildKiroPlannerMessages($message, $context);
 
         $content = $this->sendChatCompletion(
-            messages: [
-                [
-                    'role' => 'system',
-                    'content' => <<<SYSTEM
-Eres un planner experto para un asistente local de negocios.
-Devuelve SOLO JSON valido con esta forma:
-{
-  "intent": "search|recommend|compare|locate|contact|route|hours|smalltalk",
-  "business_query": "string",
-  "keywords": ["string"],
-  "distance_mode": "none|near|very_near|far",
-  "budget_level": "barato|medio|premium|null",
-  "location_hint": "string|null",
-  "needs_clarification": true,
-  "clarifying_question": "string|null",
-  "response_style": "directo|amigable|conserje|comparativo"
-}
-Reglas:
-- Si el usuario solo saluda, intent=smalltalk y no inventes busqueda.
-- Si pide como llegar, transito o tiempo, intent=route.
-- Si pide horarios/apertura/cierre, intent=hours.
-- Si no hace falta preguntar, needs_clarification=false y clarifying_question=null.
-- keywords maximo 10.
-SYSTEM
-                ],
-                [
-                    'role' => 'user',
-                    'content' => "MENSAJE:\n{$message}\n\nCONTEXTO:\n{$contextJson}",
-                ],
-            ],
+            messages: $messages,
             temperature: 0.1,
             model: $selectedModel
         );
@@ -328,37 +291,129 @@ SYSTEM
 
     public function kiroBusinessAgentWithContext(string $message, array $context, ?string $model = null): string
     {
-        $contextJson = json_encode(
-            $context,
-            JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT
-        );
-
-        if (!$contextJson) {
-            $contextJson = '{}';
-        }
-
         $selectedModel = $model ?: (string) config('agents.kiro.model', config('services.openai.model', 'gpt-4o-mini'));
         $intent = strtolower(trim((string) ($context['intent'] ?? 'search')));
         $responseSeed = (int) ($context['response_style_seed'] ?? 0);
         $systemPrompt = $this->buildKiroSystemPrompt($intent, $responseSeed, $context);
         $temperature = in_array($intent, ['contact', 'hours', 'route'], true) ? 0.15 : 0.35;
+        $messages = $this->buildKiroResponseMessages($message, $context, $systemPrompt);
 
         $content = $this->sendChatCompletion(
-            messages: [
-                [
-                    'role' => 'system',
-                    'content' => $systemPrompt,
-                ],
-                [
-                    'role' => 'user',
-                    'content' => "MENSAJE:\n{$message}\n\nCONTEXTO_JSON:\n{$contextJson}",
-                ],
-            ],
+            messages: $messages,
             temperature: $temperature,
             model: $selectedModel
         );
 
         return $content ?: '';
+    }
+
+    public function previewKiroInteraction(
+        string $message,
+        array $context,
+        ?string $responseModel = null,
+        bool $plannerEnabled = true,
+        ?string $plannerModel = null,
+        bool $includePlannerPrompt = true
+    ): string {
+        $intent = strtolower(trim((string) ($context['intent'] ?? 'search')));
+        $responseSeed = (int) ($context['response_style_seed'] ?? 0);
+        $systemPrompt = $this->buildKiroSystemPrompt($intent, $responseSeed, $context);
+        $responseTemperature = in_array($intent, ['contact', 'hours', 'route'], true) ? 0.15 : 0.35;
+
+        $payload = [
+            'debug_mode' => true,
+            'response_request' => [
+                'model' => $responseModel ?: (string) config('agents.kiro.model', config('services.openai.model', 'gpt-4o-mini')),
+                'temperature' => $responseTemperature,
+                'messages' => $this->buildKiroResponseMessages($message, $context, $systemPrompt),
+            ],
+        ];
+
+        if ($plannerEnabled && $includePlannerPrompt) {
+            $plannerContext = is_array($context['planner_input'] ?? null)
+                ? $context['planner_input']
+                : [
+                    'user_location' => $context['user_location'] ?? null,
+                    'chat_summary' => $context['chat_history_summary'] ?? null,
+                    'interest_signals' => array_slice(array_keys((array) ($context['interest_patterns'] ?? [])), 0, 8),
+                ];
+
+            $payload['planner_request'] = [
+                'model' => $plannerModel ?: (string) config('agents.kiro.planner_model', config('agents.kiro.model', config('services.openai.model', 'gpt-4o-mini'))),
+                'temperature' => 0.1,
+                'messages' => $this->buildKiroPlannerMessages($message, $plannerContext),
+            ];
+        }
+
+        $json = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
+
+        if (!$json) {
+            return 'No pude serializar el debug del prompt.';
+        }
+
+        return "DEBUG_PROMPT_KIRO\n```json\n{$json}\n```";
+    }
+
+    private function buildKiroPlannerMessages(string $message, array $context): array
+    {
+        $contextJson = $this->encodeJsonContext($context);
+
+        return [
+            [
+                'role' => 'system',
+                'content' => <<<SYSTEM
+Eres un planner experto para un asistente local de negocios.
+Devuelve SOLO JSON valido con esta forma:
+{
+  "intent": "search|recommend|compare|locate|contact|route|hours|smalltalk",
+  "business_query": "string",
+  "keywords": ["string"],
+  "distance_mode": "none|near|very_near|far",
+  "budget_level": "barato|medio|premium|null",
+  "location_hint": "string|null",
+  "needs_clarification": true,
+  "clarifying_question": "string|null",
+  "response_style": "directo|amigable|conserje|comparativo"
+}
+Reglas:
+- Si el usuario solo saluda, intent=smalltalk y no inventes busqueda.
+- Si pide como llegar, transito o tiempo, intent=route.
+- Si pide horarios/apertura/cierre, intent=hours.
+- Si no hace falta preguntar, needs_clarification=false y clarifying_question=null.
+- keywords maximo 10.
+SYSTEM
+            ],
+            [
+                'role' => 'user',
+                'content' => "MENSAJE:\n{$message}\n\nCONTEXTO:\n{$contextJson}",
+            ],
+        ];
+    }
+
+    private function buildKiroResponseMessages(string $message, array $context, string $systemPrompt): array
+    {
+        $contextJson = $this->encodeJsonContext($context);
+
+        return [
+            [
+                'role' => 'system',
+                'content' => $systemPrompt,
+            ],
+            [
+                'role' => 'user',
+                'content' => "MENSAJE:\n{$message}\n\nCONTEXTO_JSON:\n{$contextJson}",
+            ],
+        ];
+    }
+
+    private function encodeJsonContext(array $context): string
+    {
+        $json = json_encode(
+            $context,
+            JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT
+        );
+
+        return $json ?: '{}';
     }
 
     private function buildKiroSystemPrompt(string $intent, int $responseSeed, array $context): string

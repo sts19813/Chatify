@@ -123,6 +123,7 @@ class RegisterAgentCommand extends Command
                 'model' => (string) config('agents.kiro.model', config('services.openai.model', 'gpt-4o-mini')),
                 'planner_enabled' => (bool) config('agents.kiro.planner_enabled', true),
                 'planner_model' => (string) config('agents.kiro.planner_model', config('agents.kiro.model', config('services.openai.model', 'gpt-4o-mini'))),
+
                 'max_history_context' => (int) config('agents.kiro.max_history_context', 8),
                 'max_candidates_context' => (int) config('agents.kiro.max_candidates_context', 350),
                 'max_results' => (int) config('agents.kiro.max_results', 5),
